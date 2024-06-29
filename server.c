@@ -20,11 +20,47 @@
 #define MAX_CLIENTS 100
 #define START_GAME_TIMEOUT 30
 
+#define AUTH_SUCCESS_MSG "Authentication successful"
+#define AUTH_FAIL_MSG "Invalid authentication code"
+#define MAX_TRIES_MSG "Maximum number of tries exceeded"
+#define GAME_STARTED_MSG "Game already started"
+#define KEEP_ALIVE_MSG "Keep alive"
+
+#define AUTH_SUCCESS 0
+#define AUTH_FAIL 1
+#define MAX_TRIES 2
+#define GAME_STARTED 3
+#define GAME_STARTING 4
+#define QUESTION 5
+#define KEEP_ALIVE 6
+#define SCOREBOARD 7
+
 typedef struct {
     int socket;
     struct sockaddr_in address;
-    int authenticated;
 } Client;
+
+typedef struct {
+    int socket_fd;
+    struct sockaddr_in address;
+    int addrlen;
+} SocketInfo;
+
+// Define the message structure
+typedef struct {
+    int type;  // Message type
+    char data[1024];  // Message data
+} Message;
+
+void send_message(int sock, int msg_type, const char *msg_data) {
+    Message msg;
+    msg.type = msg_type;
+    strncpy(msg.data, msg_data, sizeof(msg.data) - 1);
+    msg.data[sizeof(msg.data) - 1] = '\0';  // Ensure null-termination
+
+    // Send the message
+    send(sock, &msg, sizeof(msg), 0);
+}
 
 Client clients[MAX_CLIENTS];
 int client_count = 0;
@@ -54,39 +90,75 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
     return code;
 }
 
+void* broadcast_keep_alive(void* arg) {
+    int sock;
+    struct sockaddr_in multicast_addr;
+    struct ip_mreq multicast_request;
+
+    sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP); // UDP socket
+    memset(&multicast_addr, 0, sizeof(multicast_addr));
+    multicast_addr.sin_family = AF_INET;
+    multicast_addr.sin_addr.s_addr = inet_addr(MULTICAST_IP);
+    multicast_addr.sin_port = htons(MULTICAST_PORT);
+
+    while (1) {
+        sendto(sock, KEEP_ALIVE_MSG, strlen(KEEP_ALIVE_MSG), 0, (struct sockaddr *)&multicast_addr, sizeof(multicast_addr));
+        sleep(1);
+    }
+    close(sock);
+    return NULL;
+}
+
 
 void* authenticate_client(void* arg) {
-    int* fds = (int*)arg;
-    int server_fd = fds[0];
-    int socket = fds[1];
+    Client* client = (Client*)arg;
+    int socket = client->socket;
+    struct sockaddr_in address = client->address;
+    int wrong_auth_counter = 0;
 
+    // Set the socket to blocking mode
     int flags = fcntl(socket, F_GETFL, 0);
     fcntl(socket, F_SETFL, flags & ~O_NONBLOCK);
+
     char auth_buffer[1024];
     while(1){
         memset(auth_buffer, 0, sizeof(auth_buffer));
         int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
-        if (ret == 0) break; // Closed socket
+        if (ret == 0) { // Closed socket
+            free(arg);
+            return NULL;
+        }
         else if (ret < 0) {
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                usleep(100000);  // Sleep for 100 milliseconds
+            perror("Error receiving authentication code");
+            free(arg);
+            return NULL;
+        }
+
+        printf("Received authentication code: %s\n", auth_buffer);
+        if (strcmp(auth_buffer, auth_code) != 0) {
+            send_message(socket, AUTH_FAIL, AUTH_FAIL_MSG);
+            wrong_auth_counter++;
+            if (wrong_auth_counter < 5) {
                 continue;
             }
             else {
-                perror("Error receiving authentication code");
-                break;
+                send_message(socket, MAX_TRIES, MAX_TRIES_MSG);
+                close(socket);
+                free(arg);
+                return NULL;
             }
         }
-        printf("Received authentication code: %s\n", auth_buffer);
-        if (strcmp(auth_buffer, auth_code) != 0) {
-            send(socket, "Invalid authentication code", 27, 0);
-            continue;
-        }
         else {
-            send(socket, "Authentication successful", 26, 0);
+            send_message(socket, AUTH_SUCCESS, AUTH_SUCCESS_MSG);
+            pthread_mutex_lock(&client_mutex);
+            clients[client_count].socket = socket;
+            clients[client_count].address = address;
+            client_count++;
+            pthread_mutex_unlock(&client_mutex);
             break;
         }
     }
+    printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
     free(arg);
     return NULL;
 }
@@ -126,6 +198,60 @@ void broadcast_question(const char *question) {
     close(sock);
 }
 
+void* wait_for_connections(void* arg){
+    SocketInfo* info = (SocketInfo*)arg;
+    int server_fd = info->socket_fd;
+    struct sockaddr_in address = info->address;
+    int addrlen = sizeof(address);
+    time_t start_time = time(NULL);
+    int new_socket;
+    while (1) {
+        // Get the current time
+        time_t current_time = time(NULL);
+
+        // Calculate the elapsed time
+        double elapsed_time = difftime(current_time, start_time);
+
+        // Check if the elapsed time is greater than the allowed time frame
+        if (elapsed_time > START_GAME_TIMEOUT) {
+            printf("Time frame of %d seconds has expired. No more connections accepted.\n", START_GAME_TIMEOUT);
+            break;
+        }
+
+        // Set the socket to non-blocking mode
+        int flags = fcntl(server_fd, F_GETFL, 0);
+        fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
+
+        new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+        if (new_socket < 0) {
+            if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                // No connection yet, sleep for a short time and try again
+                usleep(100000);  // Sleep for 100 milliseconds
+                continue;
+            } else {
+                perror("Error in accept function");
+                break;
+            }
+        }
+        printf("New request received\n");
+        Client* client_info = (Client*)malloc(sizeof(Client));
+        client_info->socket = new_socket;
+        client_info->address = address;
+
+        // Create a new thread to handle the connection
+        pthread_t thread_id;
+        if (pthread_create(&thread_id, NULL, authenticate_client, (void*)client_info) != 0) {
+            perror("pthread_create");
+            close(new_socket);
+            free(client_info);
+            continue;
+        }
+        pthread_detach(thread_id);
+    }
+    free(arg);
+    return NULL;
+}
+
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -154,81 +280,22 @@ int main() {
     }
 
     printf("Server started with authentication code %s. Waiting for connections...\n", auth_code);
-    time_t start_time = time(NULL);
-    while (1) {
-        // Get the current time
-        time_t current_time = time(NULL);
 
-        // Calculate the elapsed time
-        double elapsed_time = difftime(current_time, start_time);
+    // Start Connection Phase - Wait For Connections Thread
+    pthread_t wait_for_connections_thread;
+    SocketInfo* info = (SocketInfo*)malloc(sizeof(SocketInfo));
+    info->socket_fd = server_fd;
+    info->address = address;
+    info->addrlen = addrlen;
+    pthread_create(&wait_for_connections_thread, NULL, wait_for_connections, (void*)info);
+    pthread_join(wait_for_connections_thread, NULL); // Wait until connection phase is done
 
-        // Check if the elapsed time is greater than the allowed time frame
-        if (elapsed_time > START_GAME_TIMEOUT) {
-            printf("Time frame of %d seconds has expired. No more connections accepted.\n", START_GAME_TIMEOUT);
-            break;
-        }
+    // Start Game Phase
+    printf("Game Starting...\n");
+    pthread_t keep_alive_thread;
+    pthread_create(&keep_alive_thread, NULL, broadcast_keep_alive, NULL); // Multicast keep alive messages
+    pthread_detach(keep_alive_thread);
 
-        // Set the socket to non-blocking mode
-        int flags = fcntl(server_fd, F_GETFL, 0);
-        fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
-
-        new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
-        if (new_socket < 0) {
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                // No connection yet, sleep for a short time and try again
-                usleep(100000);  // Sleep for 100 milliseconds
-                continue;
-            } else {
-                perror("accept");
-                break;
-            }
-        }
-        printf("New request received\n");
-        int* fds = malloc(2 * sizeof(int));
-        if (fds == NULL) {
-            perror("malloc");
-            close(new_socket);
-            continue;
-        }
-
-        // Initialize the arguments
-        fds[0] = server_fd;
-        fds[1] = new_socket;
-
-        pthread_mutex_lock(&client_mutex);
-        // Change client to authenticated = 0
-        clients[client_count].authenticated = 0;
-        pthread_mutex_unlock(&client_mutex);
-        
-        // Create a new thread to handle the connection
-        if (pthread_create(&thread_id, NULL, authenticate_client, (void*)fds) != 0) {
-            perror("pthread_create");
-            close(new_socket);
-            free(fds);
-            continue;
-        }
-        pthread_detach(thread_id);
-        
-        pthread_mutex_lock(&client_mutex);
-        if (clients[client_count].authenticated == 0) {
-            close(new_socket);
-            pthread_mutex_unlock(&client_mutex);
-            continue;
-        }
-        else {
-        clients[client_count].socket = new_socket;
-        clients[client_count].address = address;
-        client_count++;
-        pthread_mutex_unlock(&client_mutex);
-        printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-        }
-
-        pthread_create(&thread_id, NULL, new_client_handler, &clients[client_count - 1]);
-        pthread_detach(thread_id);
-
-        printf("New client connected: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-    }
-    printf("Game started. Broadcasting questions...\n");
     while(1);
     close(server_fd);
     return 0;
