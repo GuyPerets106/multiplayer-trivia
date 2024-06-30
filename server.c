@@ -63,6 +63,16 @@ void send_message(int sock, int msg_type, const char *msg_data) {
     send(sock, &msg, sizeof(msg), 0);
 }
 
+void send_multicast_message(int sock, struct sockaddr_in addr, int msg_type, const char *msg_data) {
+    Message msg;
+    msg.type = msg_type;
+    strncpy(msg.data, msg_data, sizeof(msg.data) - 1);
+    msg.data[sizeof(msg.data) - 1] = '\0';  // Ensure null-termination
+
+    // Send the message
+    sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&addr, sizeof(addr));
+}
+
 Client clients[MAX_CLIENTS];
 int client_count = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
@@ -97,7 +107,7 @@ void* keep_alive(void* arg) {
     struct sockaddr_in multicast_addr = multicast_info->address;
 
     while (1) {
-        sendto(multicast_sock, KEEP_ALIVE_MSG, strlen(KEEP_ALIVE_MSG), 0, (struct sockaddr *)&multicast_addr, sizeof(multicast_addr));
+        send_multicast_message(multicast_sock, multicast_addr, KEEP_ALIVE, KEEP_ALIVE_MSG);
         printf("Sent keep alive message\n");
         sleep(KEEP_ALIVE_INTERVAL);
     }
