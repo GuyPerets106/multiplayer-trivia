@@ -15,10 +15,11 @@
 #include <time.h>
 
 #define PORT 8080
-#define MULTICAST_IP "228.6.73.122"
+#define MULTICAST_IP "228.12.1.1"
 #define MULTICAST_PORT 12345
 #define MAX_CLIENTS 100
 #define START_GAME_TIMEOUT 30
+#define KEEP_ALIVE_INTERVAL 10
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
@@ -90,23 +91,16 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
     return code;
 }
 
-void* broadcast_keep_alive(void* arg) {
-    int sock;
-    struct sockaddr_in multicast_addr;
-    struct ip_mreq multicast_request;
-
-    sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP); // UDP socket
-    memset(&multicast_addr, 0, sizeof(multicast_addr));
-    multicast_addr.sin_family = AF_INET;
-    multicast_addr.sin_addr.s_addr = inet_addr(MULTICAST_IP);
-    multicast_addr.sin_port = htons(MULTICAST_PORT);
+void* keep_alive(void* arg) {
+    SocketInfo* multicast_info = (SocketInfo*)arg;
+    int multicast_sock = multicast_info->socket_fd;
+    struct sockaddr_in multicast_addr = multicast_info->address;
 
     while (1) {
-        sendto(sock, KEEP_ALIVE_MSG, strlen(KEEP_ALIVE_MSG), 0, (struct sockaddr *)&multicast_addr, sizeof(multicast_addr));
-        sleep(1);
+        sendto(multicast_sock, KEEP_ALIVE_MSG, strlen(KEEP_ALIVE_MSG), 0, (struct sockaddr *)&multicast_addr, sizeof(multicast_addr));
+        printf("Sent keep alive message\n");
+        sleep(KEEP_ALIVE_INTERVAL);
     }
-    close(sock);
-    return NULL;
 }
 
 
@@ -115,10 +109,6 @@ void* authenticate_client(void* arg) {
     int socket = client->socket;
     struct sockaddr_in address = client->address;
     int wrong_auth_counter = 0;
-
-    // Set the socket to blocking mode
-    int flags = fcntl(socket, F_GETFL, 0);
-    fcntl(socket, F_SETFL, flags & ~O_NONBLOCK);
 
     char auth_buffer[1024];
     while(1){
@@ -143,6 +133,8 @@ void* authenticate_client(void* arg) {
             }
             else {
                 send_message(socket, MAX_TRIES, MAX_TRIES_MSG);
+                printf("Maximum number of tries exceeded. Closing connection.\n");
+                // usleep(1000000); 
                 close(socket);
                 free(arg);
                 return NULL;
@@ -161,6 +153,15 @@ void* authenticate_client(void* arg) {
     printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
     free(arg);
     return NULL;
+}
+
+void* distribute_multicast_address(void* arg){ // Using unicast messages
+    for (int i = 0; i < client_count; i++) {
+        char multicast_address[1024];
+        sprintf(multicast_address, "%s:%d", MULTICAST_IP, MULTICAST_PORT); // Creating the multicast address
+        send_message(clients[i].socket, GAME_STARTING, multicast_address);
+    }
+    sleep(1);
 }
 
 void *new_client_handler(void *arg) {
@@ -183,73 +184,85 @@ void *new_client_handler(void *arg) {
     return NULL;
 }
 
-void broadcast_question(const char *question) {
-    int sock;
-    struct sockaddr_in multicast_addr;
-    struct ip_mreq multicast_request;
-
-    sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP); // UDP socket
-    memset(&multicast_addr, 0, sizeof(multicast_addr));
-    multicast_addr.sin_family = AF_INET;
-    multicast_addr.sin_addr.s_addr = inet_addr(MULTICAST_IP);
-    multicast_addr.sin_port = htons(MULTICAST_PORT);
-
-    sendto(sock, question, strlen(question), 0, (struct sockaddr *)&multicast_addr, sizeof(multicast_addr));
-    close(sock);
-}
-
 void* wait_for_connections(void* arg){
     SocketInfo* info = (SocketInfo*)arg;
-    int server_fd = info->socket_fd;
+    int server_fd = info->socket_fd; // Welcome Socket
     struct sockaddr_in address = info->address;
     int addrlen = sizeof(address);
+    fd_set read_fds;   // set of socket descriptors we want to read from
     time_t start_time = time(NULL);
-    int new_socket;
-    while (1) {
+    int client_socket;
+    int max_fd = server_fd;
+
+
+    while(1) {
+        fd_set tmp_fds = read_fds; // Create a copy of the read_fds
         // Get the current time
         time_t current_time = time(NULL);
 
         // Calculate the elapsed time
-        double elapsed_time = difftime(current_time, start_time);
-
-        // Check if the elapsed time is greater than the allowed time frame
-        if (elapsed_time > START_GAME_TIMEOUT) {
+        int elapsed_time = (int)difftime(current_time, start_time);
+        struct timeval tv;
+        tv.tv_sec = START_GAME_TIMEOUT - elapsed_time;
+        tv.tv_usec = 0;
+        FD_ZERO(&tmp_fds);
+        FD_SET(server_fd, &tmp_fds);
+        int ret = select(max_fd + 1, &tmp_fds, NULL, NULL, &tv); // Blocking until a connection is received or timeout
+        if (ret < 0 && errno != EINTR) {
+            perror("Error in select function");
+            break; // ? WHAT ELSE SHOULD HAPPEN
+            // exit(EXIT_FAILURE);
+        }
+        if (ret == 0) { // Timeout
             printf("Time frame of %d seconds has expired. No more connections accepted.\n", START_GAME_TIMEOUT);
             break;
         }
-
-        // Set the socket to non-blocking mode
-        int flags = fcntl(server_fd, F_GETFL, 0);
-        fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
-
-        new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
-        if (new_socket < 0) {
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                // No connection yet, sleep for a short time and try again
-                usleep(100000);  // Sleep for 100 milliseconds
-                continue;
-            } else {
+        if (FD_ISSET(server_fd, &tmp_fds)) {
+            client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen); // ! BLOCKING
+            if (client_socket < 0) {
                 perror("Error in accept function");
-                break;
+                exit(EXIT_FAILURE);
             }
-        }
-        printf("New request received\n");
-        Client* client_info = (Client*)malloc(sizeof(Client));
-        client_info->socket = new_socket;
-        client_info->address = address;
+            printf("New request received, wait for authentication...\n");
+            FD_SET(client_socket, &read_fds); // Add the new client to the read set
+            // if (client_socket > max_fd) {
+            //     max_fd = client_socket;
+            // }
+            max_fd = client_socket;
+            Client* client_info = (Client*)malloc(sizeof(Client));
+            client_info->socket = client_socket;
+            client_info->address = address;
 
-        // Create a new thread to handle the connection
-        pthread_t thread_id;
-        if (pthread_create(&thread_id, NULL, authenticate_client, (void*)client_info) != 0) {
-            perror("pthread_create");
-            close(new_socket);
-            free(client_info);
-            continue;
+            // Create a new thread to handle the connection
+            pthread_t thread_id;
+            if (pthread_create(&thread_id, NULL, authenticate_client, (void*)client_info) != 0) {
+                perror("pthread_create");
+                close(client_socket);
+                free(client_info);
+                continue;
+            }
+            pthread_detach(thread_id);
+            FD_CLR(server_fd, &read_fds);
         }
-        pthread_detach(thread_id);
     }
-    free(arg);
     return NULL;
+}
+
+void* deny_new_connections(void* arg) {
+    SocketInfo* info = (SocketInfo*)arg;
+    int server_fd = info->socket_fd; // Welcome Socket
+    struct sockaddr_in address = info->address;
+    int addrlen = info->addrlen;
+
+    while(1) {
+        int client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+        if (client_socket < 0) {
+            perror("Error in accept function");
+            exit(EXIT_FAILURE);
+        }
+        send_message(client_socket, GAME_STARTED, GAME_STARTED_MSG);
+        close(client_socket);
+    }
 }
 
 int main() {
@@ -290,13 +303,41 @@ int main() {
     pthread_create(&wait_for_connections_thread, NULL, wait_for_connections, (void*)info);
     pthread_join(wait_for_connections_thread, NULL); // Wait until connection phase is done
 
-    // Start Game Phase
+
+    // Start Game Phase:
+    // 1. Distribute Multicast Address
+    // 2. Start Keep Alive Thread
+    // 3. Start Game (Multicast Questions, Scoreboard, etc.)
+    int multicast_sock;
+    struct sockaddr_in multicast_addr;
+    struct ip_mreq multicast_request;
+
+    multicast_sock = socket(AF_INET, SOCK_DGRAM, 0); // UDP socket
+    memset(&multicast_addr, 0, sizeof(multicast_addr));
+    multicast_addr.sin_family = AF_INET;
+    multicast_addr.sin_addr.s_addr = inet_addr(MULTICAST_IP);
+    multicast_addr.sin_port = htons(MULTICAST_PORT);
+
     printf("Game Starting...\n");
+    pthread_t game_starting_thread;
+    pthread_create(&game_starting_thread, NULL, distribute_multicast_address, NULL);
+    pthread_join(game_starting_thread, NULL);
+
+    pthread_t deny_connections_thread;
+    pthread_create(&deny_connections_thread, NULL, deny_new_connections, (void*)info); // Deny new connections
+    pthread_detach(deny_connections_thread);
+
+    SocketInfo* multicast_info = (SocketInfo*)malloc(sizeof(SocketInfo));
+    multicast_info->socket_fd = multicast_sock;
+    multicast_info->address = multicast_addr;
+    multicast_info->addrlen = sizeof(multicast_addr);
     pthread_t keep_alive_thread;
-    pthread_create(&keep_alive_thread, NULL, broadcast_keep_alive, NULL); // Multicast keep alive messages
+    pthread_create(&keep_alive_thread, NULL, keep_alive, (void*)multicast_info); // Multicast keep alive messages
     pthread_detach(keep_alive_thread);
 
     while(1);
+    pthread_kill(deny_connections_thread, 0);
+    free(info);
     close(server_fd);
     return 0;
 }

@@ -33,12 +33,33 @@
 #define KEEP_ALIVE 6
 #define SCOREBOARD 7
 
+int game_started = 0;
+pthread_cond_t cond;
+
+
+void* handle_message(void* args);
 
 // Define the message structure
 typedef struct {
     int type;  // Message type
     char data[1024];  // Message data
 } Message;
+
+typedef struct {
+    int socket;
+    Message msg;
+} MessageThreadArgs;
+
+typedef struct {
+    int socket;
+    struct sockaddr * addr;
+} MulticastThreadArgs;
+
+typedef struct {
+    char ip[16];
+    int port;
+} MulticastAddress;
+
 
 void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
@@ -58,42 +79,8 @@ void send_authentication_code(int sock){
     send(sock, auth_buffer, strlen(auth_buffer), 0);
 }
 
-void receive_multicast() {
-    printf("GOT HERE\n");
-    int sock;
-    struct sockaddr_in addr;
-    struct ip_mreq mreq;
+void receive_multicast(int sock) {
     char msgbuf[1024];
-
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
-        perror("socket failure");
-        exit(1);
-    }
-
-    u_int yes = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
-        perror("Reusing ADDR failed");
-        exit(1);
-    }
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(MULTICAST_PORT);
-
-    if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-        perror("bind failure");
-        exit(1);
-    }
-
-    mreq.imr_multiaddr.s_addr = inet_addr(MULTICAST_IP);
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
-        perror("setsockopt failure");
-        exit(1);
-    }
-
     while (1) {
         int nbytes = recvfrom(sock, msgbuf, sizeof(msgbuf), 0, NULL, NULL);
         if (nbytes < 0) {
@@ -106,6 +93,7 @@ void receive_multicast() {
 }
 
 int establish_connection(){
+    // printf("GOT HERE\n");
     int sock = 0;
     struct sockaddr_in serv_addr;
     char *hello_msg = "Ready";
@@ -134,135 +122,203 @@ int establish_connection(){
             fflush(stdin);
         }
 
-        // Set the socket to non-blocking mode for connect only
-        int flags = fcntl(sock, F_GETFL, 0);
-        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-
         if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            if (errno == EINPROGRESS) {
-                struct timeval tv;
-                tv.tv_sec = 1; // Change if needed
-                tv.tv_usec = 0;
-                fd_set fdset;
-                FD_ZERO(&fdset);
-                FD_SET(sock, &fdset);
-                int ret = select(sock + 1, NULL, &fdset, NULL, &tv); 
-                if (ret < 0 && errno != EINTR) { 
-                    printf("Error in select function, Try again...\n");
-                    address_ok = 0;
-                    fflush(stdin);
-                    close(sock);
-                    continue;
-                }
-                else if (ret == 0) { // Timeout
-                    printf("Wrong IP or Port, Try again...\n");
-                    address_ok = 0;
-                    fflush(stdin);
-                    close(sock);
-                    continue;
-                }
-                else {
-                    int so_error;
-                    socklen_t len = sizeof(so_error);
-                    getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len);
-                    if (so_error) {
-                        printf("Error connecting to server, Try again...\n");
-                        address_ok = 0;
-                        fflush(stdin);
-                        close(sock);
-                        continue;
-                    }
-                }
-            } else {
-                printf("Error connecting to server\n");
+            if(errno == ECONNREFUSED) {
+                printf("Wrong IP or Port. Try again...\n");
                 address_ok = 0;
-                fflush(stdin);
-                close(sock);
+                continue;
+            }
+            else {
+                perror("Connection failed");
+                address_ok = 0;
                 continue;
             }
         }
-        address_ok = 1;
-        return sock;
+        else {
+            return sock;
+        }
     }
 }
 
-void handle_message(Message msg, int client_socket) {
+
+void* handle_unicast(void* args){ // Handles first connections with the server and authentication
+    int bytes_receive_unicast;
+    Message msg_unicast;
+    int sock = *(int*)args;
+    while(1){ // Unicast
+        bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
+
+        if (bytes_receive_unicast > 0) {
+            pthread_t handle_unicast_msg;
+            MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));
+            thread_args->socket = sock;
+            thread_args->msg = msg_unicast;
+            printf("Message received: %s\n", msg_unicast.data);
+            pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
+            pthread_join(handle_unicast_msg, NULL);
+            continue; // ! REMOVE ALL CONTINUES WHEN MULTICAST IS IMPLEMENTED
+        }
+        else if (bytes_receive_unicast == 0) { // Socket closed
+            printf("Server disconnected\n");
+            fflush(stdin);
+            sock = establish_connection();
+            send_authentication_code(sock);
+            continue;
+        }
+        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            // No message received, do something else
+            continue;
+        }
+        else {
+            perror("Error in recv function");
+            printf("Message received: %s\n", msg_unicast.data);
+            break;
+        }
+    }
+    return NULL;
+}
+
+void* handle_multicast(void* args){
+    int bytes_receive_multicast;
+    Message msg_multicast;
+    MulticastThreadArgs* thread_args = (MulticastThreadArgs*)args;
+    int sock = thread_args->socket;
+    struct sockaddr* addr = thread_args->addr;
+    socklen_t addrlen = sizeof(*addr);
+    while(game_started){
+        printf("Waiting for multicast message...\n");
+        bytes_receive_multicast = recvfrom(sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
+        if (bytes_receive_multicast > 0) {
+            pthread_t handle_multicast_msg;
+            MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));
+            thread_args->socket = sock;
+            thread_args->msg = msg_multicast;
+            printf("Message received: %s\n", msg_multicast.data);
+            pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)thread_args);
+            pthread_join(handle_multicast_msg, NULL);
+            continue;
+        }
+        else if (bytes_receive_multicast == 0) { // Socket closed
+            printf("Multicast socket closed\n");
+            break;
+        }
+        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            // No message received, do something else
+            continue;
+        }
+        else {
+            perror("Error in recv function");
+            printf("Message received: %s\n", msg_multicast.data);
+            break;
+        }
+    }
+    free(args);
+    return NULL;
+}
+
+void open_multicast_socket(char* msg){
+    MulticastAddress multicast_address;
+    char splitter[] = ":";
+    char* token = strsep(&msg, splitter);
+    strcpy(multicast_address.ip, token);
+    token = strsep(&msg, splitter);
+    multicast_address.port = atoi(token);
+
+    int sock;
+    struct sockaddr_in addr;
+    struct ip_mreq mreq;
+
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        perror("socket failure");
+        exit(1);
+    }
+
+    u_int yes = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
+        perror("Reusing ADDR failed");
+        exit(1);
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons(multicast_address.port);
+
+    if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        perror("bind failure");
+        exit(1);
+    }
+
+    mreq.imr_multiaddr.s_addr = inet_addr(multicast_address.ip);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
+        perror("setsockopt failure");
+        exit(1);
+    }
+    printf("Listening to multicast address %s:%d\n", multicast_address.ip, multicast_address.port);
+    MulticastThreadArgs* args = (MulticastThreadArgs*)malloc(sizeof(MulticastThreadArgs));
+    args->socket = sock;
+    args->addr = (struct sockaddr*)&addr;
+    pthread_t handle_multicast_thread;
+    pthread_create(&handle_multicast_thread, NULL, handle_multicast, (void*)args);
+    pthread_detach(handle_multicast_thread);
+}
+
+void* handle_message(void* args) {
+    MessageThreadArgs* thread_args = (MessageThreadArgs*)args;
+    Message msg = thread_args->msg;
+    int client_socket = thread_args->socket;
     switch (msg.type) {
         case AUTH_FAIL:
-            printf("Authentication failed: '%s'\n", msg.data);
+            printf("Authentication Failed: '%s'\n", msg.data);
             send_authentication_code(client_socket);
             break;
         case AUTH_SUCCESS:
-            printf("Authentication successful\n");
+            printf("Authentication Successful\n");
+            printf("Waiting for the game to start...\n");
             break;
         case MAX_TRIES:
-            printf("Maximum number of tries exceeded\n");
+            printf("Maximum number of tries exceeded, disconnecting...\n\n");
             close(client_socket);
+            fflush(stdin);
             client_socket = establish_connection(); // BLOCKING
             send_authentication_code(client_socket);
             break;
         case GAME_STARTED:
-            printf("%s. Go fuck yourself...\n", msg.data);
+            printf("%s. Go fuck yourself...\n\n", msg.data);
             close(client_socket);
+            fflush(stdin);
             client_socket = establish_connection(); // BLOCKING
             send_authentication_code(client_socket);
+            break;
+        case GAME_STARTING: // Receive Unicast
+            game_started = 1;
+            printf("Got multicast address %s from server, opening the multicast socket...\n", msg.data);
+            open_multicast_socket(msg.data);
+            break;
+        case KEEP_ALIVE: // Receive Multicast
+            printf("Got keep alive message from the server\n");
+            send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         default:
             printf("Unknown message type: %d\n", msg.type);
             break;
     }
+    free(args);
+    return NULL;
 }
 
 int main() {
+    pthread_cond_init(&cond, NULL);
     int sock = establish_connection(); // DONE When IP and Port are correct
     send_authentication_code(sock);
     
-    Message msg_unicast, msg_multicast;
-    int bytes_receive_unicast, bytes_receive_multicast;
-    // Main Loop 
-    while(1){
-        // Receive in non-blocking mode
-        bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), MSG_DONTWAIT);
-        bytes_receive_multicast = recv(sock, &msg_unicast, sizeof(msg_multicast), MSG_DONTWAIT);
-
-        // handle message (UNICAST)
-        if (bytes_receive_unicast > 0) {
-            handle_message(msg_unicast, sock);
-        }
-        else if (bytes_receive_unicast == 0) { // Socket closed
-            printf("Server disconnected\n");
-            sock = establish_connection();
-            send_authentication_code(sock);
-            continue;
-        }
-        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-            // No message received, do something else
-            continue;
-        }
-        else {
-            perror("Error in recv function");
-            break;
-        }
-
-        // handle message (MULTICAST)
-        if (bytes_receive_multicast > 0) {
-            handle_message(msg_unicast, sock);
-        }
-        else if (bytes_receive_multicast == 0) { // Socket closed
-            printf("Server disconnected\n");
-            sock = establish_connection();
-            send_authentication_code(sock);
-            continue;
-        }
-        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-            // No message received, do something else
-            continue;
-        }
-        else {
-            perror("Error in recv function");
-            break;
-        }
-    }
+    
+    pthread_t handle_unicast_thread;
+    pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
+    pthread_join(handle_unicast_thread, NULL);
+    
     
     // fflush(stdin);
     // send(sock, hello_msg, strlen(hello_msg), 0);
@@ -277,7 +333,6 @@ int main() {
     //     buffer[strcspn(buffer, "\n")] = 0;  // Remove newline character
     //     send(sock, buffer, strlen(buffer), 0);
     // }
-
-    close(sock);
+    printf("Exiting...\n");
     return 0;
 }
