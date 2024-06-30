@@ -105,6 +105,7 @@ void* listen_for_keep_alives(void* arg) {
     Client* client = (Client*)arg;
     int socket = client->socket;
     char buffer[1024];
+    print("Listening for keep alive messages from clients...\n")
     int ret = recv(socket, buffer, sizeof(buffer), 0);
     if (ret == 0) { // Closed socket
         close(socket);
