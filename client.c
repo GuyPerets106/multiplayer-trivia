@@ -146,8 +146,8 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
     Message msg_unicast;
     int sock = *(int*)args;
     while(1){ // Unicast
+        memset(msg_unicast.data, 0, sizeof(msg_unicast.data));
         bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
-
         if (bytes_receive_unicast > 0) {
             pthread_t handle_unicast_msg;
             MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));
@@ -186,8 +186,7 @@ void* handle_multicast(void* args){
     struct sockaddr* addr = thread_args->addr;
     socklen_t addrlen = sizeof(*addr);
     while(game_started){
-        memset(msg_multicast, 0, sizeof(msg_multicast));
-        printf("Waiting for multicast message...\n");
+        memset(msg_multicast.data, 0, sizeof(msg_multicast.data));
         bytes_receive_multicast = recvfrom(sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
         if (bytes_receive_multicast > 0) {
             pthread_t handle_multicast_msg;
