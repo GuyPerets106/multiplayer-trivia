@@ -104,9 +104,9 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
 void* listen_for_keep_alives(void* arg) {
     Client* client = (Client*)arg;
     int socket = client->socket;
-    char buffer[1024];
+    Message msg;
     printf("Listening for keep alive messages from clients...\n");
-    int ret = recv(socket, buffer, sizeof(buffer), 0);
+    int ret = recv(socket, &msg, sizeof(msg), 0);
     if (ret == 0) { // Closed socket
         close(socket);
         pthread_mutex_lock(&client_mutex);
@@ -127,7 +127,7 @@ void* listen_for_keep_alives(void* arg) {
         close(socket);
         return NULL;
     }
-    printf("Received keep alive message: %s\n", buffer);
+    printf("Received keep alive message: %s\n", msg.data);
     return NULL;
 }
 
