@@ -186,6 +186,7 @@ void* handle_multicast(void* args){
     struct sockaddr* addr = thread_args->addr;
     socklen_t addrlen = sizeof(*addr);
     while(game_started){
+        memset(msg_multicast, 0, sizeof(msg_multicast));
         printf("Waiting for multicast message...\n");
         bytes_receive_multicast = recvfrom(sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
         if (bytes_receive_multicast > 0) {
