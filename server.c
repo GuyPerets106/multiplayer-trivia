@@ -101,12 +101,46 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
     return code;
 }
 
+void* listen_for_keep_alives(void* arg) {
+    Client* client = (Client*)arg;
+    int socket = client->socket;
+    char buffer[1024];
+    int ret = recv(socket, buffer, sizeof(buffer), 0);
+    if (ret == 0) { // Closed socket
+        close(socket);
+        pthread_mutex_lock(&client_mutex);
+        for (int i = 0; i < client_count; i++) {
+            if (clients[i].socket == socket) {
+                for (int j = i; j < client_count - 1; j++) {
+                    clients[j] = clients[j + 1];
+                }
+                client_count--;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&client_mutex);
+        return NULL;
+    }
+    else if (ret < 0) {
+        perror("Error receiving keep alive message");
+        close(socket);
+        return NULL;
+    }
+    printf("Received keep alive message: %s\n", buffer);
+    return NULL;
+}
+
 void* keep_alive(void* arg) {
     SocketInfo* multicast_info = (SocketInfo*)arg;
     int multicast_sock = multicast_info->socket_fd;
     struct sockaddr_in multicast_addr = multicast_info->address;
 
     while (1) {
+        for(int i = 0; i < client_count; i++){
+            pthread_t listen_for_keep_alives_thread;
+            pthread_create(&listen_for_keep_alives_thread, NULL, listen_for_keep_alives, (void*)&clients[i]);
+            pthread_detach(listen_for_keep_alives_thread);
+        }
         send_multicast_message(multicast_sock, multicast_addr, KEEP_ALIVE, KEEP_ALIVE_MSG);
         printf("Sent keep alive message\n");
         sleep(KEEP_ALIVE_INTERVAL);
