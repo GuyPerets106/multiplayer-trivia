@@ -53,6 +53,11 @@ typedef struct {
     char data[1024];  // Message data
 } Message;
 
+Client clients[MAX_CLIENTS];
+int client_count = 0;
+pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
+char* auth_code;
+
 void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
     msg.type = msg_type;
@@ -72,11 +77,6 @@ void send_multicast_message(int sock, struct sockaddr_in addr, int msg_type, con
     // Send the message
     sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&addr, sizeof(addr));
 }
-
-Client clients[MAX_CLIENTS];
-int client_count = 0;
-pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
-char* auth_code;
 
 char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
     srand(time(NULL));
@@ -380,7 +380,9 @@ int main() {
     pthread_detach(keep_alive_thread);
 
     while(1);
-    pthread_kill(deny_connections_thread, 0);
+    // Kill the thread
+    pthread_cancel(keep_alive_thread);
+    pthread_cancel(deny_connections_thread);
     free(info);
     close(server_fd);
     return 0;
