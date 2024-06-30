@@ -51,7 +51,8 @@ typedef struct {
 } MessageThreadArgs;
 
 typedef struct {
-    int socket;
+    int multicast_socket;
+    int unicast_socket;
     struct sockaddr * addr;
 } MulticastThreadArgs;
 
@@ -182,16 +183,17 @@ void* handle_multicast(void* args){
     int bytes_receive_multicast;
     Message msg_multicast;
     MulticastThreadArgs* thread_args = (MulticastThreadArgs*)args;
-    int sock = thread_args->socket;
+    int multicast_sock = thread_args->multicast_socket;
+    int unicast_sock = thread_args->unicast_socket;
     struct sockaddr* addr = thread_args->addr;
     socklen_t addrlen = sizeof(*addr);
     while(game_started){
         memset(msg_multicast.data, 0, sizeof(msg_multicast.data));
-        bytes_receive_multicast = recvfrom(sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
+        bytes_receive_multicast = recvfrom(multicast_sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
         if (bytes_receive_multicast > 0) {
             pthread_t handle_multicast_msg;
             MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));
-            thread_args->socket = sock;
+            thread_args->socket = unicast_sock;
             thread_args->msg = msg_multicast;
             printf("Message received: %s\n", msg_multicast.data);
             pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)thread_args);
@@ -216,7 +218,7 @@ void* handle_multicast(void* args){
     return NULL;
 }
 
-void open_multicast_socket(char* msg){
+void open_multicast_socket(int unicast_sock, char* msg){
     MulticastAddress multicast_address;
     char splitter[] = ":";
     char* token = strsep(&msg, splitter);
@@ -258,7 +260,8 @@ void open_multicast_socket(char* msg){
     }
     printf("Listening to multicast address %s:%d\n", multicast_address.ip, multicast_address.port);
     MulticastThreadArgs* args = (MulticastThreadArgs*)malloc(sizeof(MulticastThreadArgs));
-    args->socket = sock;
+    args->multicast_socket = sock;
+    args->unicast_socket = unicast_sock;
     args->addr = (struct sockaddr*)&addr;
     pthread_t handle_multicast_thread;
     pthread_create(&handle_multicast_thread, NULL, handle_multicast, (void*)args);
@@ -295,7 +298,7 @@ void* handle_message(void* args) {
         case GAME_STARTING: // Receive Unicast
             game_started = 1;
             printf("Got multicast address %s from server, opening the multicast socket...\n", msg.data);
-            open_multicast_socket(msg.data);
+            open_multicast_socket(client_socket, msg.data);
             break;
         case KEEP_ALIVE: // Receive Multicast
             printf("Got keep alive message from the server\n");
