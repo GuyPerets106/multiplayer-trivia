@@ -8,11 +8,11 @@ Multiplayer Game Protocol Inspired by Kahoot
 # 1. Project Overview Objective
 The project aims to design and implement a client-server network protocol for a multiplayer game similar to Kahoot. The game will support multiple clients simultaneously, allowing players to connect, participate in quizzes, and receive feedback in real-time.
 
-Key Features
-Real-time Multiplayer Gameplay: Multiple clients can connect to the server and participate in the quiz simultaneously.
-Socket Programming: Utilizes both multicast (for broadcasting quiz questions) and TCP (for reliable communication of responses and results).
-Multi-threaded Server: The server handles multiple clients concurrently using multi-threading.
-State Management: Both the server and clients maintain state machines to manage the game's flow.
+## Key Features:
+- Real-time Multiplayer Gameplay: Multiple clients can connect to the server and participate in the quiz simultaneously.
+- Socket Programming: Utilizes both multicast (for broadcasting quiz questions) and TCP (for reliable communication of responses and results).
+- Multi-threaded Server: The server handles multiple clients concurrently using multi-threading.
+- State Management: Both the server and clients maintain state machines to manage the game's flow.
 # 2. Managing Multiple Clients
 Multi-threading on the Server
 The server will use multi-threading to manage multiple clients simultaneously. Each client connection will be handled by a separate thread, ensuring that the server can process requests concurrently without blocking.
