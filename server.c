@@ -542,6 +542,9 @@ int main() {
     multicast_addr.sin_port = htons(MULTICAST_PORT);
 
     printf("Game Starting...\n");
+    FILE* questions_file = fopen(FILENAME, "r");
+    create_shuffled_questions(questions_file);
+    fclose(questions_file);
     pthread_t game_starting_thread;
     pthread_create(&game_starting_thread, NULL, distribute_multicast_address, NULL);
     pthread_join(game_starting_thread, NULL);
