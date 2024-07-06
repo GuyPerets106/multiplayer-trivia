@@ -120,6 +120,7 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
 }
 
 void handle_keep_alive(int client_sock) {
+    print_participants();
     pthread_mutex_lock(&client_mutex);
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
@@ -408,7 +409,7 @@ void* handle_client_msg(void* arg){
 void* listen_for_messages(void* args){
     // Every Unicast message coming for a specific client 
     // will be handled in another thread
-    int sock = *(int*)args;
+    int sock = *(int*)args; // Specific Client
     Message msg;
     ClientMsg* client_msg = (ClientMsg*)args;
     int bytes_receive_unicast =  0;
