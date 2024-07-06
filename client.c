@@ -61,6 +61,7 @@ typedef struct {
 } MulticastAddress;
 
 pthread_t curr_question_thread;
+char curr_answer[1024];
 
 void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
@@ -93,13 +94,12 @@ void receive_multicast(int sock) {
     }
 }
 
-char* answer_question() {
-    char answer[1024];
+void answer_question() {
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);  // Set stdin to non-blocking
     printf("Enter your answer: ");
     while (1) {
-        int ret = scanf("%s", answer);
+        int ret = scanf("%s", curr_answer);
         if (ret > 0) {
             break;
         } else if (ret == EOF) {
@@ -108,7 +108,6 @@ char* answer_question() {
         usleep(100000);  // Sleep for 100 ms to avoid busy-waiting
     }
     fflush(stdin);
-    return answer;
 }
 
 int establish_connection(){
@@ -325,8 +324,9 @@ void* handle_message(void* args) {
         case QUESTION: // Receive Multicast
             printf("Got question from server...\n");
             curr_question_thread = pthread_self(); // ! Consider Mutex
-            char* answer = answer_question(); // blocking on scanf
-            send_message(client_socket, ANSWER, answer);
+            answer_question(); // blocking on scanf
+            printf("My Answer: %s\n", curr_answer);
+            send_message(client_socket, ANSWER, curr_answer);
             break;
         case ANSWER: // Receive Unicast When Timeout!
             printf("Got timeout for answer");
