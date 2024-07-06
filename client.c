@@ -15,8 +15,6 @@
 
 #define SERVER_IP "172.16.223.136"
 #define PORT 8080
-#define MULTICAST_IP "228.6.73.122"
-#define MULTICAST_PORT 12346
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"

@@ -366,6 +366,7 @@ void* send_questions(void* args){
     int multicast_sock = info->socket_fd;
     struct sockaddr_in multicast_addr = info->address;
     char* question = read_question_from_file();
+    printf("Question: %s\n", question);
     // Send the questions through multicast
     for(int i = 0; i < client_count; i++){
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, question);
@@ -374,7 +375,7 @@ void* send_questions(void* args){
         pthread_detach(listen_for_answer_thread);
     }
     sleep(QUESTION_TIMEOUT);
-    pthread_cancel(listen_for_answer);
+    pthread_cancel(listen_for_answer_thread);
     // ! SCOREBOARD
     return NULL;
 }
