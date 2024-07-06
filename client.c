@@ -170,7 +170,7 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
             MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));
             thread_args->socket = sock;
             thread_args->msg = msg_unicast;
-            printf("Message received: %s\n", msg_unicast.data);
+            // printf("Message received: %s\n", msg_unicast.data);
             pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
             pthread_join(handle_unicast_msg, NULL);
             continue; // ! REMOVE ALL CONTINUES WHEN MULTICAST IS IMPLEMENTED
@@ -213,7 +213,7 @@ void* handle_multicast(void* args){
             MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));
             thread_args->socket = unicast_sock;
             thread_args->msg = msg_multicast;
-            printf("Message received: %s\n", msg_multicast.data);
+            // printf("Message received: %s\n", msg_multicast.data);
             pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)thread_args);
             pthread_join(handle_multicast_msg, NULL);
             continue;
@@ -319,7 +319,7 @@ void* handle_message(void* args) {
             open_multicast_socket(client_socket, msg.data);
             break;
         case KEEP_ALIVE: // Receive Multicast
-            printf("Got keep alive message from the server\n");
+            // printf("Got keep alive message from the server\n");
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         case QUESTION: // Receive Multicast
