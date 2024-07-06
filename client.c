@@ -323,7 +323,7 @@ void* handle_message(void* args) {
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         case QUESTION: // Receive Multicast
-            printf("Got question from server...\n");
+            printf("%s", msg.data);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             answer_question(); // blocking on scanf
             printf("My Answer: %s\n", curr_answer);
