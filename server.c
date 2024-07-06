@@ -347,16 +347,23 @@ void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
 }
 
 void* send_questions(void* args){
-    SocketInfo* info = (SocketInfo*)args;
-    int multicast_sock = info->socket_fd;
-    struct sockaddr_in multicast_addr = info->address;
-    read_question_from_file(); 
-    printf("Question: %s\n", curr_question);
-    // Send the questions through multicast
-    send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
-    sleep(QUESTION_TIMEOUT);
-    send_scoreboard(multicast_sock, multicast_addr);
-    sleep(SCOREBOARD_BREAK);
+    int num_questions = 10;
+    while(1) {
+        SocketInfo* info = (SocketInfo*)args;
+        int multicast_sock = info->socket_fd;
+        struct sockaddr_in multicast_addr = info->address;
+        read_question_from_file(); 
+        // printf("Question: %s\n", curr_question);
+        // Send the questions through multicast
+        send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
+        sleep(QUESTION_TIMEOUT);
+        send_scoreboard(multicast_sock, multicast_addr);
+        sleep(SCOREBOARD_BREAK);
+        num_questions--;
+        if(num_questions == 0){
+            break;
+        }
+    }
     return NULL;
 }
 

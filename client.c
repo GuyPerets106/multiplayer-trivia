@@ -93,6 +93,7 @@ void receive_multicast(int sock) {
 }
 
 void answer_question() {
+    printf("Enter your answer: ");
     while(1){
         fd_set set;
         struct timeval timeout;
