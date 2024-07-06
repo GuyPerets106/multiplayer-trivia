@@ -526,6 +526,9 @@ int main() {
     pthread_create(&send_questions_thread, NULL, send_questions, (void*)&multicast_info); // Multicast questions
     pthread_join(send_questions_thread, NULL);
 
+    // Multicast Game-Over message
+    
+    printf("Game Over\n");
     while(1); 
     // Kill the thread
     pthread_cancel(keep_alive_thread);
