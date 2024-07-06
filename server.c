@@ -139,6 +139,7 @@ void* send_keep_alive(void* arg) { // Multicast
     while (1) {
         send_multicast_message(multicast_sock, multicast_addr, KEEP_ALIVE, KEEP_ALIVE_MSG);
         printf("Sent keep alive message\n");
+        print_participants();
         sleep(KEEP_ALIVE_INTERVAL);
         // Check if specific clients did not send keep alive messages
         pthread_mutex_lock(&client_mutex);
