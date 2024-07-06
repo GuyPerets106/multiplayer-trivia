@@ -439,12 +439,12 @@ void* listen_for_messages(void* args){
             close(sock);
             return NULL;
         }
-        client_msg->msg = msg;
-        client_msg->socket = sock;
         pthread_mutex_lock(&client_mutex);
         print_participants();
         printf("GOT HERE3\n");
         pthread_mutex_unlock(&client_mutex);
+        client_msg->msg = msg;
+        client_msg->socket = sock;
         pthread_t handle_message_thread;
         pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)client_msg);
         pthread_detach(handle_message_thread);
