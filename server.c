@@ -336,6 +336,24 @@ void* listen_for_answer(void* arg){
     // Listen for answers from specific client - unicast
     int socket = *(int*)arg;
     char buffer[1024];
+    // Use select with timeout
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(socket, &read_fds);
+    struct timeval tv;
+    tv.tv_sec = QUESTION_TIMEOUT;
+    tv.tv_usec = 0;
+    int ret = select(socket + 1, &read_fds, NULL, NULL, &tv);
+    if (ret < 0) {
+        perror("Error in select function");
+        close(socket);
+        return NULL;
+    }
+    if (ret == 0) { // Timeout
+        printf("Timeout for receiving answer from client\n");
+        send_message(socket, ANSWER, "No answer received");
+        return NULL;
+    }
     int bytes_receive_unicast = recv(socket, buffer, sizeof(buffer), 0); 
     if (bytes_receive_unicast == 0) { // Closed socket
         close(socket);
@@ -358,6 +376,7 @@ void* listen_for_answer(void* arg){
         return NULL;
     }
     printf("Received answer from client: %s\n", buffer);
+    // Add Scoreboard Phase
     return NULL;
 }
 
@@ -368,14 +387,13 @@ void* send_questions(void* args){
     char* question = read_question_from_file();
     printf("Question: %s\n", question);
     // Send the questions through multicast
+    send_multicast_message(multicast_sock, multicast_addr, QUESTION, question);
     for(int i = 0; i < client_count; i++){
-        send_multicast_message(multicast_sock, multicast_addr, QUESTION, question);
         pthread_t listen_for_answer_thread;
         pthread_create(&listen_for_answer_thread, NULL, listen_for_answer, (void*)&clients[i].socket);
         pthread_detach(listen_for_answer_thread);
     }
     sleep(QUESTION_TIMEOUT);
-    pthread_cancel(listen_for_answer_thread);
     // ! SCOREBOARD
     return NULL;
 }
