@@ -285,18 +285,17 @@ void* wait_for_connections(void* arg){
             //     max_fd = client_socket;
             // }
             max_fd = client_socket;
-            Client* client_info = (Client*)malloc(sizeof(Client));
-            client_info->socket = client_socket;
-            client_info->address = address;
-            client_info->last_keep_alive_time = time(NULL);
-            client_info->score = 0;
+            Client client_info;
+            client_info.socket = client_socket;
+            client_info.address = address; // This is the address of the WelcomeSocket
+            client_info.last_keep_alive_time = time(NULL);
+            client_info.score = 0;
 
             // Create a new thread to handle the connection
             pthread_t thread_id;
-            if (pthread_create(&thread_id, NULL, authenticate_client, (void*)client_info) != 0) {
+            if (pthread_create(&thread_id, NULL, authenticate_client, (void*)&client_info) != 0) {
                 perror("pthread_create");
                 close(client_socket);
-                free(client_info);
                 continue;
             }
             pthread_detach(thread_id);
