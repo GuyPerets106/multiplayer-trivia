@@ -98,7 +98,15 @@ char* answer_question() {
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);  // Set stdin to non-blocking
     printf("Enter your answer: ");
-    scanf("%s", answer);
+    while (1) {
+        int ret = scanf("%s", answer);
+        if (ret > 0) {
+            break;
+        } else if (ret == EOF) {
+            clearerr(stdin);  // Clear EOF flag if reached
+        }
+        usleep(100000);  // Sleep for 100 ms to avoid busy-waiting
+    }
     fflush(stdin);
     return answer;
 }
