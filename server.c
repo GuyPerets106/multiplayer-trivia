@@ -360,8 +360,9 @@ void* send_questions(void* args){
     SocketInfo* info = (SocketInfo*)args;
     int multicast_sock = info->socket_fd;
     struct sockaddr_in multicast_addr = info->address;
-    char* question = read_question_from_file();
-    printf("Question: %s\n", question);
+    // char* question = read_question_from_file(); // ! 
+    // printf("Question: %s\n", question);
+    char question[1024] = "What is the capital of France?\nA. Paris\nB. London\nC. Berlin\nD. Madrid\n";
     // Send the questions through multicast
     send_multicast_message(multicast_sock, multicast_addr, QUESTION, question);
     sleep(QUESTION_TIMEOUT);
