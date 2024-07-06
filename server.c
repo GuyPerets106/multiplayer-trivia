@@ -385,7 +385,6 @@ void handle_client_answer(int client_sock, char* answer) {
 }
 
 void* handle_client_msg(void* arg){
-    print_participants();
     ClientMsg* client_msg = (ClientMsg*)arg;
     Message* msg = &client_msg->msg;
     int sock = client_msg->socket;
@@ -402,11 +401,12 @@ void* handle_client_msg(void* arg){
         default:
             break;
     }
-    print_participants();
     return NULL;
 }
 
 void* listen_for_messages(void* args){
+    print_participants();
+
     // Every Unicast message coming for a specific client 
     // will be handled in another thread
     int sock = *(int*)args; // Specific Client
@@ -437,6 +437,7 @@ void* listen_for_messages(void* args){
         }
         client_msg->msg = msg;
         client_msg->socket = sock;
+        print_participants();
         pthread_t handle_message_thread;
         pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)client_msg);
         pthread_detach(handle_message_thread);
