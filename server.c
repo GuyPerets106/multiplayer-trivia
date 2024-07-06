@@ -138,10 +138,6 @@ void* send_keep_alive(void* arg) { // Multicast
     while (1) {
         send_multicast_message(multicast_sock, multicast_addr, KEEP_ALIVE, KEEP_ALIVE_MSG);
         printf("Sent keep alive message\n");
-        pthread_mutex_lock(&client_mutex);
-        print_participants();
-        printf("GOT HERE4\n");
-        pthread_mutex_unlock(&client_mutex);
         sleep(KEEP_ALIVE_INTERVAL);
         // Check if specific clients did not send keep alive messages
         pthread_mutex_lock(&client_mutex);
@@ -268,10 +264,6 @@ void* wait_for_connections(void* arg){
         }
         if (ret == 0) { // Timeout
             printf("Time frame of %d seconds has expired. No more connections accepted.\n", START_GAME_TIMEOUT);
-            pthread_mutex_lock(&client_mutex);
-            print_participants();
-            printf("GOT HERE5\n");
-            pthread_mutex_unlock(&client_mutex);
             sleep(2);
             break;
         }
@@ -379,8 +371,6 @@ void handle_client_answer(int client_sock, char* answer) {
             break;
         }
     }
-    print_participants();
-    printf("GOT HERE1\n");
     pthread_mutex_unlock(&client_mutex);
 }
 
@@ -405,14 +395,9 @@ void* handle_client_msg(void* arg){
 }
 
 void* listen_for_messages(void* args){
-    pthread_mutex_lock(&client_mutex);
-    print_participants();
-    printf("GOT HERE2\n");
-    pthread_mutex_unlock(&client_mutex);
-
     // Every Unicast message coming for a specific client 
     // will be handled in another thread
-    int sock = *(int*)args; // Specific Client
+    int sock = *(int*)args;
     Message msg;
     ClientMsg client_msg;
     int bytes_receive_unicast =  0;
@@ -441,10 +426,6 @@ void* listen_for_messages(void* args){
         }
         client_msg.msg = msg;
         client_msg.socket = sock;
-        pthread_mutex_lock(&client_mutex);
-        print_participants();
-        printf("GOT HERE3\n");
-        pthread_mutex_unlock(&client_mutex);
         pthread_t handle_message_thread;
         pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
         pthread_detach(handle_message_thread);
