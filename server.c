@@ -349,6 +349,9 @@ void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
 void* send_questions(void* args){
     int num_questions = 10;
     while(1) {
+        if (client_count == 0){
+            break;
+        }
         SocketInfo* info = (SocketInfo*)args;
         int multicast_sock = info->socket_fd;
         struct sockaddr_in multicast_addr = info->address;
@@ -360,7 +363,7 @@ void* send_questions(void* args){
         send_scoreboard(multicast_sock, multicast_addr);
         sleep(SCOREBOARD_BREAK);
         num_questions--;
-        if(num_questions == 0){
+        if (num_questions == 0){
             break;
         }
     }
