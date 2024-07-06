@@ -69,6 +69,13 @@ int client_count = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
 char* auth_code;
 
+void print_participants() {
+    printf("Participants:\n");
+    for (int i = 0; i < client_count; i++) {
+        printf("%s:%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port));
+    }
+}
+
 void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
     msg.type = msg_type;
@@ -231,13 +238,6 @@ void *new_client_handler(void *arg) {
     return NULL;
 }
 
-void print_participants() {
-    printf("Participants:\n");
-    for (int i = 0; i < client_count; i++) {
-        printf("%s:%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port));
-    }
-}
-
 void* wait_for_connections(void* arg){
     SocketInfo* info = (SocketInfo*)arg;
     int server_fd = info->socket_fd; // Welcome Socket
@@ -346,10 +346,10 @@ char* read_question_from_file() {
 
 void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
     char scoreboard[1024];
-    sprintf(scoreboard, "=====Scoreboard=====\n");
+    sprintf(scoreboard, "==========Scoreboard==========\n\n");
     for (int i = 0; i < client_count; i++) {
         char client_score[1024];
-        sprintf(client_score, "%s:%d\t\t%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port), clients[i].score);
+        sprintf(client_score, "%s:%d\t%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port), clients[i].score);
         strcat(scoreboard, client_score);
     }
     send_multicast_message(multicast_sock, multicast_addr, SCOREBOARD, scoreboard);
