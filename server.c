@@ -120,7 +120,6 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
 }
 
 void handle_keep_alive(int client_sock) {
-    print_participants();
     pthread_mutex_lock(&client_mutex);
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
@@ -129,7 +128,6 @@ void handle_keep_alive(int client_sock) {
         }
     }
     pthread_mutex_unlock(&client_mutex);
-    print_participants();
 }
 
 void* send_keep_alive(void* arg) { // Multicast
@@ -387,6 +385,7 @@ void handle_client_answer(int client_sock, char* answer) {
 }
 
 void* handle_client_msg(void* arg){
+    print_participants();
     ClientMsg* client_msg = (ClientMsg*)arg;
     Message* msg = &client_msg->msg;
     int sock = client_msg->socket;
@@ -403,6 +402,7 @@ void* handle_client_msg(void* arg){
         default:
             break;
     }
+    print_participants();
     return NULL;
 }
 
