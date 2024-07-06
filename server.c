@@ -277,9 +277,6 @@ void* wait_for_connections(void* arg){
             }
             printf("New request received, wait for authentication...\n");
             FD_SET(client_socket, &read_fds); // Add the new client to the read set
-            // if (client_socket > max_fd) {
-            //     max_fd = client_socket;
-            // }
             max_fd = client_socket;
             Client client_info;
             client_info.socket = client_socket;
@@ -325,7 +322,7 @@ char* read_question_from_file() {
         perror("Error opening file");
         return NULL;
     }
-    char* question = (char*)malloc(1024);
+    char question[1024];
     for (int i = 0; i < 5; i++) {
         char line[1024];
         if (fgets(line, sizeof(line), file) == NULL) {
