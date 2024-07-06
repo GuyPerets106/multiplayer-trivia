@@ -121,6 +121,7 @@ void handle_keep_alive(int client_sock) {
         }
     }
     pthread_mutex_unlock(&client_mutex);
+    print_participants();
 }
 
 void* send_keep_alive(void* arg) { // Multicast
@@ -380,6 +381,7 @@ void handle_client_answer(int client_sock, char* answer) {
         }
     }
     pthread_mutex_unlock(&client_mutex);
+    print_participants();
 }
 
 void* handle_client_msg(void* arg){
