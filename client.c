@@ -328,10 +328,10 @@ void* handle_message(void* args) {
             printf("My Answer: %s\n", curr_answer);
             send_message(client_socket, ANSWER, curr_answer);
             break;
-        case ANSWER: // Receive Unicast When Timeout!
-            printf("Got timeout for answer");
+        case ANSWER: // ! Receive Unicast When Timeout
             pthread_cancel(curr_question_thread);
             fflush(stdin);
+            printf("Got timeout for answer");
             break;
         default:
             printf("Unknown message type: %d\n", msg.type);
