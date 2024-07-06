@@ -314,11 +314,10 @@ void* deny_new_connections(void* arg) {
     }
 }
 
-void read_question_from_file() {
+void read_question_from_file(FILE* file) {
     // Read 5 lines each time a question is needed
     // Empty curr_question
     curr_question[0] = '\0';
-    FILE* file = fopen("QUESTIONS.txt", "r");
     if (file == NULL) {
         perror("Error opening file");
     }
@@ -329,7 +328,6 @@ void read_question_from_file() {
         }
         strcat(curr_question, line);
     }
-    fclose(file);
 }
 
 
@@ -347,6 +345,7 @@ void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
 }
 
 void* send_questions(void* args){
+    FILE* file = fopen("QUESTIONS.txt", "r");
     int num_questions = 10;
     while(1) {
         if (client_count == 0){
@@ -355,7 +354,7 @@ void* send_questions(void* args){
         SocketInfo* info = (SocketInfo*)args;
         int multicast_sock = info->socket_fd;
         struct sockaddr_in multicast_addr = info->address;
-        read_question_from_file(); 
+        read_question_from_file(file); 
         // printf("Question: %s\n", curr_question);
         // Send the questions through multicast
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
@@ -367,6 +366,7 @@ void* send_questions(void* args){
             break;
         }
     }
+    fclose(file);
     return NULL;
 }
 
