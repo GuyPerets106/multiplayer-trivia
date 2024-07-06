@@ -421,6 +421,7 @@ void handle_client_answer(int client_sock, char* client_answer) {
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
             if (strlen(client_answer) == 2){ // Including '\n'
+                printf("GOT HERE\n");
                 if (strncmp(client_answer, questions[curr_question_index].answer, 1) == 0) {    
                     // Compute elapsed time in seconds
                     int elapsed_time = (int)difftime(current_time, curr_question_start_time);
