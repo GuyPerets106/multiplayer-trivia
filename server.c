@@ -169,12 +169,10 @@ void* authenticate_client(void* arg) {
         memset(auth_buffer, 0, sizeof(auth_buffer));
         int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
         if (ret == 0) { // Closed socket
-            free(arg);
             return NULL;
         }
         else if (ret < 0) {
             perror("Error receiving authentication code");
-            free(arg);
             return NULL;
         }
 
@@ -190,7 +188,6 @@ void* authenticate_client(void* arg) {
                 printf("Maximum number of tries exceeded. Closing connection.\n");
                 // usleep(1000000); 
                 close(socket);
-                free(arg);
                 return NULL;
             }
         }
@@ -205,7 +202,6 @@ void* authenticate_client(void* arg) {
         }
     }
     printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-    free(arg);
     return NULL;
 }
 
@@ -475,11 +471,11 @@ int main() {
 
     // Start Connection Phase - Wait For Connections Thread
     pthread_t wait_for_connections_thread;
-    SocketInfo* info = (SocketInfo*)malloc(sizeof(SocketInfo));
-    info->socket_fd = server_fd;
-    info->address = address;
-    info->addrlen = addrlen;
-    pthread_create(&wait_for_connections_thread, NULL, wait_for_connections, (void*)info);
+    SocketInfo info;
+    info.socket_fd = server_fd;
+    info.address = address;
+    info.addrlen = addrlen;
+    pthread_create(&wait_for_connections_thread, NULL, wait_for_connections, (void*)&info);
     pthread_join(wait_for_connections_thread, NULL); // Wait until connection phase is done
 
 
@@ -503,19 +499,19 @@ int main() {
     pthread_join(game_starting_thread, NULL);
 
     pthread_t deny_connections_thread;
-    pthread_create(&deny_connections_thread, NULL, deny_new_connections, (void*)info); // Deny new connections
+    pthread_create(&deny_connections_thread, NULL, deny_new_connections, (void*)&info); // Deny new connections
     pthread_detach(deny_connections_thread);
 
-    SocketInfo* multicast_info = (SocketInfo*)malloc(sizeof(SocketInfo));
-    multicast_info->socket_fd = multicast_sock;
-    multicast_info->address = multicast_addr;
-    multicast_info->addrlen = sizeof(multicast_addr);
+    SocketInfo multicast_info;
+    multicast_info.socket_fd = multicast_sock;
+    multicast_info.address = multicast_addr;
+    multicast_info.addrlen = sizeof(multicast_addr);
 
     for(int i = 0; i < client_count; i++){
         clients[i].last_keep_alive_time = time(NULL);
     }
     pthread_t keep_alive_thread;
-    pthread_create(&keep_alive_thread, NULL, send_keep_alive, (void*)multicast_info); // Multicast keep alive messages
+    pthread_create(&keep_alive_thread, NULL, send_keep_alive, (void*)&multicast_info); // Multicast keep alive messages
     pthread_detach(keep_alive_thread);
 
     // Open listen_for_messages thread for each client (Unicast)
@@ -526,14 +522,13 @@ int main() {
     }
 
     pthread_t send_questions_thread;
-    pthread_create(&send_questions_thread, NULL, send_questions, (void*)multicast_info); // Multicast questions
+    pthread_create(&send_questions_thread, NULL, send_questions, (void*)&multicast_info); // Multicast questions
     pthread_join(send_questions_thread, NULL);
 
     while(1); 
     // Kill the thread
     pthread_cancel(keep_alive_thread);
     pthread_cancel(deny_connections_thread);
-    free(info);
     close(server_fd);
     return 0;
 }
