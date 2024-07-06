@@ -415,7 +415,7 @@ void handle_client_answer(int client_sock, char* client_answer) {
     pthread_mutex_lock(&client_mutex);
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
-            if (strlen(client_answer) == 1){
+            if (strlen(client_answer) == 2){ // Including '\n'
                 if (client_answer[0] == questions[curr_question_index].answer[0]) { // ! CHANGE
                     // Compute elapsed time in seconds
                     int elapsed_time = (int)difftime(current_time, curr_question_start_time);
