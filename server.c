@@ -413,12 +413,13 @@ void handle_client_answer(int client_sock, char* client_answer) {
     pthread_mutex_lock(&client_mutex);
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
-            printf("Received answer from client: %s\n", client_answer);
-            printf("Correct answer: %s\n", questions[curr_question_index].answer); // ! CHANGE
             if (strcmp(client_answer, questions[curr_question_index].answer) == 0) { // ! CHANGE
                 // Compute elapsed time in seconds
                 int elapsed_time = (int)difftime(current_time, curr_question_start_time);
-                clients[i].score += floor(30 / elapsed_time * 100 + 10);
+                printf("Elapsed time: %d seconds\n", elapsed_time);
+                int curr_score = floor(30 / elapsed_time * 100 + 10);
+                printf("Client got %d points\n", curr_score);
+                clients[i].score += curr_score;
             }
             break;
         }
