@@ -89,7 +89,6 @@ void print_participants() {
 }
 
 void create_shuffled_questions(FILE* file){
-    QA questions[NUM_OF_QUESTIONS];
     // Read 5 lines (question) and 1 line (answer) from FILENAME
     for (int i = 0; i < NUM_OF_QUESTIONS; i++){
         for(int j = 0; j < 5; j++){
@@ -392,7 +391,7 @@ void* send_questions(void* args){
         int multicast_sock = info->socket_fd;
         struct sockaddr_in multicast_addr = info->address;
         strcpy(curr_question, questions[curr_question_index].question); 
-        // printf("Question: %s\n", curr_question);
+        printf("\n%s\n", curr_question);
         // Send the questions through multicast
         curr_question_start_time = time(NULL);
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
