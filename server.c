@@ -419,6 +419,7 @@ void* listen_for_messages(void* args){
     while(1){
         bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
         if (bytes_receive_unicast == 0) { // Closed socket
+            printf("Client disconnected\n");
             close(sock);
             pthread_mutex_lock(&client_mutex);
             for (int i = 0; i < client_count; i++) {
