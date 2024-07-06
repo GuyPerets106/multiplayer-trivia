@@ -339,7 +339,7 @@ int main() {
     
     pthread_t handle_unicast_thread;
     pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
-    pthread_detach(handle_unicast_thread, NULL);
+    pthread_detach(handle_unicast_thread);
     while(1);
     
     // fflush(stdin);
