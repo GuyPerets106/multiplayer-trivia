@@ -260,7 +260,7 @@ void open_multicast_socket(int unicast_sock, char* msg){
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(123456);
+    addr.sin_port = htons(multicast_address.port);
 
     if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("bind failure");
