@@ -317,10 +317,12 @@ void* handle_message(void* args) {
             curr_question_thread = pthread_self(); // ! Consider Mutex
             char* answer = answer_question(); // blocking on scanf
             send_message(client_socket, ANSWER, answer);
+            break;
         case ANSWER: // Receive Unicast When Timeout!
             printf("Got timeout for answer");
             pthread_cancel(curr_question_thread);
             fflush(stdin);
+            break;
         default:
             printf("Unknown message type: %d\n", msg.type);
             break;
