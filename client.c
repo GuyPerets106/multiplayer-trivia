@@ -30,8 +30,9 @@
 #define GAME_STARTED 3
 #define GAME_STARTING 4
 #define QUESTION 5
-#define KEEP_ALIVE 6
-#define SCOREBOARD 7
+#define ANSWER 6
+#define KEEP_ALIVE 7
+#define SCOREBOARD 8
 
 int game_started = 0;
 pthread_cond_t cond;
@@ -91,6 +92,14 @@ void receive_multicast(int sock) {
         msgbuf[nbytes] = '\0';
         printf("Received question: %s\n", msgbuf);
     }
+}
+
+char* answer_question() {
+    char answer[1024];
+    printf("Enter your answer: ");
+    scanf("%s", answer);
+    fflush(stdin);
+    return answer;
 }
 
 int establish_connection(){
@@ -189,9 +198,7 @@ void* handle_multicast(void* args){
     socklen_t addrlen = sizeof(*addr);
     while(game_started){
         memset(msg_multicast.data, 0, sizeof(msg_multicast.data));
-        printf("Waiting for multicast message...\n");
         bytes_receive_multicast = recvfrom(multicast_sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
-        printf("Received multicast message\n");
         if (bytes_receive_multicast > 0) {
             pthread_t handle_multicast_msg;
             MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));
@@ -306,6 +313,10 @@ void* handle_message(void* args) {
             printf("Got keep alive message from the server\n");
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
+        case QUESTION: // Receive Multicast
+            printf("Got question from server...\n");
+            char* answer = answer_question();
+            send_message(client_socket, ANSWER, answer);
         default:
             printf("Unknown message type: %d\n", msg.type);
             break;

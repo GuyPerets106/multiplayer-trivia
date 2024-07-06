@@ -19,7 +19,8 @@
 #define MULTICAST_PORT 12345
 #define MAX_CLIENTS 100
 #define START_GAME_TIMEOUT 30
-#define KEEP_ALIVE_INTERVAL 10
+#define KEEP_ALIVE_INTERVAL 5
+#define QUESTION_TIMEOUT 10
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
@@ -33,8 +34,9 @@
 #define GAME_STARTED 3
 #define GAME_STARTING 4
 #define QUESTION 5
-#define KEEP_ALIVE 6
-#define SCOREBOARD 7
+#define ANSWER 6
+#define KEEP_ALIVE 7
+#define SCOREBOARD 8
 
 typedef struct {
     int socket;
@@ -310,6 +312,73 @@ void* deny_new_connections(void* arg) {
     }
 }
 
+char* read_question_from_file() {
+    // Read 5 lines each time a question is needed
+    FILE* file = fopen("QUESTIONS.txt", "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return NULL;
+    }
+    char* question = (char*)malloc(1024);
+    for (int i = 0; i < 5; i++) {
+        char line[1024];
+        if (fgets(line, sizeof(line), file) == NULL) {
+            perror("Error reading file");
+            return NULL;
+        }
+        strcat(question, line);
+    }
+    fclose(file);
+    return question;
+}
+
+void* listen_for_answer(void* arg){
+    // Listen for answers from specific client - unicast
+    int socket = *(int*)arg;
+    char buffer[1024];
+    int bytes_receive_unicast = recv(socket, buffer, sizeof(buffer), 0); 
+    if (bytes_receive_unicast == 0) { // Closed socket
+        close(socket);
+        pthread_mutex_lock(&client_mutex);
+        for (int i = 0; i < client_count; i++) {
+            if (clients[i].socket == socket) {
+                for (int j = i; j < client_count - 1; j++) {
+                    clients[j] = clients[j + 1];
+                }
+                client_count--;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&client_mutex);
+        return NULL;
+    }
+    else if (bytes_receive_unicast < 0) {
+        perror("Error receiving answer");
+        close(socket);
+        return NULL;
+    }
+    printf("Received answer from client: %s\n", buffer);
+    return NULL;
+}
+
+void* send_questions(void* args){
+    SocketInfo* info = (SocketInfo*)args;
+    int multicast_sock = info->socket_fd;
+    struct sockaddr_in multicast_addr = info->address;
+    char* question = read_question_from_file();
+    // Send the questions through multicast
+    for(int i = 0; i < client_count; i++){
+        send_multicast_message(multicast_sock, multicast_addr, QUESTION, question);
+        pthread_t listen_for_answer_thread;
+        pthread_create(&listen_for_answer_thread, NULL, listen_for_answer, (void*)&clients[i].socket);
+        pthread_detach(listen_for_answer_thread);
+    }
+    sleep(QUESTION_TIMEOUT);
+    pthread_cancel(listen_for_answer);
+    // ! SCOREBOARD
+    return NULL;
+}
+
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -380,7 +449,11 @@ int main() {
     pthread_create(&keep_alive_thread, NULL, keep_alive, (void*)multicast_info); // Multicast keep alive messages
     pthread_detach(keep_alive_thread);
 
-    while(1);
+    pthread_t send_questions_thread;
+    pthread_create(&send_questions_thread, NULL, send_questions, (void*)multicast_info); // Multicast questions
+    pthread_join(send_questions_thread, NULL);
+
+    while(1); 
     // Kill the thread
     pthread_cancel(keep_alive_thread);
     pthread_cancel(deny_connections_thread);
