@@ -95,6 +95,8 @@ void receive_multicast(int sock) {
 
 char* answer_question() {
     char answer[1024];
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);  // Set stdin to non-blocking
     printf("Enter your answer: ");
     scanf("%s", answer);
     fflush(stdin);
