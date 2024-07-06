@@ -113,6 +113,11 @@ void create_shuffled_questions(FILE* file){
         questions[i] = questions[random_index];
         questions[random_index] = temp;
     }
+    // Print the shuffled questions
+    // for (int i = 0; i < NUM_OF_QUESTIONS; i++){
+    //     printf("Question %d: %s", i + 1, questions[i].question);
+    //     printf("Answer %d: %s", i + 1, questions[i].answer);
+    // }
 }
 
 void send_message(int sock, int msg_type, const char *msg_data) {
@@ -416,7 +421,7 @@ void handle_client_answer(int client_sock, char* client_answer) {
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
             if (strlen(client_answer) == 2){ // Including '\n'
-                if (client_answer[0] == questions[curr_question_index].answer[0]) { // ! CHANGE
+                if (strncmp(client_answer, questions[curr_question_index].answer, 1) == 0) {    
                     // Compute elapsed time in seconds
                     int elapsed_time = (int)difftime(current_time, curr_question_start_time);
                     int curr_score = floor(30 / elapsed_time * 100 + 10);
