@@ -68,6 +68,7 @@ Client clients[MAX_CLIENTS];
 int client_count = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
 char* auth_code;
+char curr_question[1024];
 
 void print_participants() {
     printf("Participants:\n");
@@ -313,24 +314,22 @@ void* deny_new_connections(void* arg) {
     }
 }
 
-char* read_question_from_file() {
+void read_question_from_file() {
     // Read 5 lines each time a question is needed
+    // Empty curr_question
+    curr_question[0] = '\0';
     FILE* file = fopen("QUESTIONS.txt", "r");
     if (file == NULL) {
         perror("Error opening file");
-        return NULL;
     }
-    char question[1024];
     for (int i = 0; i < 5; i++) {
         char line[1024];
         if (fgets(line, sizeof(line), file) == NULL) {
             perror("Error reading file");
-            return NULL;
         }
-        strcat(question, line);
+        strcat(curr_question, line);
     }
     fclose(file);
-    return question;
 }
 
 
@@ -350,10 +349,10 @@ void* send_questions(void* args){
     SocketInfo* info = (SocketInfo*)args;
     int multicast_sock = info->socket_fd;
     struct sockaddr_in multicast_addr = info->address;
-    char* question = read_question_from_file(); 
-    printf("Question: %s\n", question);
+    read_question_from_file(); 
+    printf("Question: %s\n", curr_question);
     // Send the questions through multicast
-    send_multicast_message(multicast_sock, multicast_addr, QUESTION, question);
+    send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
     sleep(QUESTION_TIMEOUT);
     send_scoreboard(multicast_sock, multicast_addr);
     sleep(SCOREBOARD_BREAK);
