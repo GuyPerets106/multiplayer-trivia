@@ -30,6 +30,7 @@
 #define KEEP_ALIVE 7
 #define SCOREBOARD 8
 #define GAME_OVER 9
+#define INVALID 10
 
 int game_started = 0;
 pthread_cond_t cond;
@@ -361,6 +362,13 @@ void* handle_message(void* args) {
             fflush(stdin);
             client_socket = establish_connection(); // ? Close the program?
             send_authentication_code(client_socket);
+            break;
+        case INVALID:
+            printf("Invalid Answer\n");
+            curr_question_thread = pthread_self(); // ! Consider Mutex
+            answer_question();
+            printf("My Answer: %s\n", curr_answer);
+            send_message(client_socket, ANSWER, curr_answer);
             break;
         default:
             printf("Unknown message type: %d\n", msg.type);

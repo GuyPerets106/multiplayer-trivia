@@ -42,6 +42,8 @@
 #define ANSWER 6
 #define KEEP_ALIVE 7
 #define SCOREBOARD 8
+#define GAME_OVER 9
+#define INVALID 10
 
 typedef struct {
     int socket;
@@ -413,15 +415,19 @@ void handle_client_answer(int client_sock, char* client_answer) {
     pthread_mutex_lock(&client_mutex);
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
-            if (strcmp(client_answer, questions[curr_question_index].answer) == 0) { // ! CHANGE
-                // Compute elapsed time in seconds
-                int elapsed_time = (int)difftime(current_time, curr_question_start_time);
-                printf("Elapsed time: %d seconds\n", elapsed_time);
-                int curr_score = floor(30 / elapsed_time * 100 + 10);
-                printf("Client got %d points\n", curr_score);
-                clients[i].score += curr_score;
+            if (strlen(client_answer) == 1){
+                if (client_answer[0] == questions[curr_question_index].answer[0]) { // ! CHANGE
+                    // Compute elapsed time in seconds
+                    int elapsed_time = (int)difftime(current_time, curr_question_start_time);
+                    int curr_score = floor(30 / elapsed_time * 100 + 10);
+                    printf("Client got %d points\n", curr_score);
+                    clients[i].score += curr_score;
+                }
+            else {
+                send_message(client_sock, INVALID, "Invalid Answer");
             }
             break;
+            }
         }
     }
     pthread_mutex_unlock(&client_mutex);
