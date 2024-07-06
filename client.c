@@ -105,6 +105,7 @@ void answer_question() {
         }
         usleep(100000);  // Sleep for 100 ms to avoid busy-waiting
     }
+    fcntl(STDIN_FILENO, F_SETFL, flags);  // Reset stdin flags
     fflush(stdin);
 }
 
