@@ -339,8 +339,8 @@ int main() {
     
     pthread_t handle_unicast_thread;
     pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
-    pthread_join(handle_unicast_thread, NULL);
-    
+    pthread_detach(handle_unicast_thread, NULL);
+    while(1);
     
     // fflush(stdin);
     // send(sock, hello_msg, strlen(hello_msg), 0);
