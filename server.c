@@ -507,6 +507,10 @@ int main() {
     multicast_info->socket_fd = multicast_sock;
     multicast_info->address = multicast_addr;
     multicast_info->addrlen = sizeof(multicast_addr);
+
+    for(int i = 0; i < client_count; i++){
+        clients[i].last_keep_alive_time = time(NULL);
+    }
     pthread_t keep_alive_thread;
     pthread_create(&keep_alive_thread, NULL, send_keep_alive, (void*)multicast_info); // Multicast keep alive messages
     pthread_detach(keep_alive_thread);

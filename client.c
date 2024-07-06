@@ -13,8 +13,6 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#define SERVER_IP "172.16.223.136"
-#define PORT 8080
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
@@ -262,7 +260,7 @@ void open_multicast_socket(int unicast_sock, char* msg){
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(multicast_address.port);
+    addr.sin_port = htons(123456);
 
     if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("bind failure");
