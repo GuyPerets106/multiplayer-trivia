@@ -21,6 +21,8 @@
 #define START_GAME_TIMEOUT 30
 #define KEEP_ALIVE_INTERVAL 5
 #define QUESTION_TIMEOUT 10
+#define KEEP_ALIVE_TIMEOUT 15
+#define SCOREBOARD_BREAK 5
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
@@ -41,6 +43,8 @@
 typedef struct {
     int socket;
     struct sockaddr_in address;
+    time_t last_keep_alive_time;
+    int score;
 } Client;
 
 typedef struct {
@@ -54,6 +58,11 @@ typedef struct {
     int type;  // Message type
     char data[1024];  // Message data
 } Message;
+
+typedef struct {
+    int socket;
+    Message msg;
+} ClientMsg;
 
 Client clients[MAX_CLIENTS];
 int client_count = 0;
@@ -103,50 +112,40 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
     return code;
 }
 
-void* listen_for_keep_alives(void* arg) {
-    Client* client = (Client*)arg;
-    int socket = client->socket;
-    Message msg;
-    printf("Listening for keep alive messages from clients...\n");
-    int ret = recv(socket, &msg, sizeof(msg), 0);
-    if (ret == 0) { // Closed socket
-        close(socket);
-        pthread_mutex_lock(&client_mutex);
-        for (int i = 0; i < client_count; i++) {
-            if (clients[i].socket == socket) {
-                for (int j = i; j < client_count - 1; j++) {
-                    clients[j] = clients[j + 1];
-                }
-                client_count--;
-                break;
-            }
+void handle_keep_alive(int client_sock) {
+    pthread_mutex_lock(&client_mutex);
+    for (int i = 0; i < client_count; i++) {
+        if (clients[i].socket == client_sock) {
+            clients[i].last_keep_alive_time = time(NULL);
+            break;
         }
-        pthread_mutex_unlock(&client_mutex);
-        return NULL;
     }
-    else if (ret < 0) {
-        perror("Error receiving keep alive message");
-        close(socket);
-        return NULL;
-    }
-    printf("Received keep alive message: %s\n", msg.data);
-    return NULL;
+    pthread_mutex_unlock(&client_mutex);
 }
 
-void* keep_alive(void* arg) {
+void* send_keep_alive(void* arg) { // Multicast
     SocketInfo* multicast_info = (SocketInfo*)arg;
     int multicast_sock = multicast_info->socket_fd;
     struct sockaddr_in multicast_addr = multicast_info->address;
 
     while (1) {
-        for(int i = 0; i < client_count; i++){
-            pthread_t listen_for_keep_alives_thread;
-            pthread_create(&listen_for_keep_alives_thread, NULL, listen_for_keep_alives, (void*)&clients[i]);
-            pthread_detach(listen_for_keep_alives_thread);
-        }
         send_multicast_message(multicast_sock, multicast_addr, KEEP_ALIVE, KEEP_ALIVE_MSG);
         printf("Sent keep alive message\n");
         sleep(KEEP_ALIVE_INTERVAL);
+        // Check if specific clients did not send keep alive messages
+        pthread_mutex_lock(&client_mutex);
+        for (int i = 0; i < client_count; i++) {
+            time_t current_time = time(NULL);
+            if (current_time - clients[i].last_keep_alive_time > KEEP_ALIVE_TIMEOUT) {
+                printf("Client %s:%d did not send keep alive messages. Removing him from the game...\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port));
+                close(clients[i].socket); // ! Alon thinks we should try again with unicast message
+                for (int j = i; j < client_count - 1; j++) {
+                    clients[j] = clients[j + 1];
+                }
+                client_count--;
+            }
+        }
+        pthread_mutex_unlock(&client_mutex);
     }
 }
 
@@ -279,6 +278,8 @@ void* wait_for_connections(void* arg){
             Client* client_info = (Client*)malloc(sizeof(Client));
             client_info->socket = client_socket;
             client_info->address = address;
+            client_info->last_keep_alive_time = time(NULL);
+            client_info->score = 0;
 
             // Create a new thread to handle the connection
             pthread_t thread_id;
@@ -380,6 +381,18 @@ void* listen_for_answer(void* arg){
     return NULL;
 }
 
+void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
+    char scoreboard[1024];
+    sprintf(scoreboard, "=====Scoreboard=====\n");
+    for (int i = 0; i < client_count; i++) {
+        char client_score[1024];
+        sprintf(client_score, "%s:%d\t\t%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port), clients[i].score);
+        strcat(scoreboard, client_score);
+    }
+    send_multicast_message(multicast_sock, multicast_addr, SCOREBOARD, scoreboard);
+    printf("%s", scoreboard);
+}
+
 void* send_questions(void* args){
     SocketInfo* info = (SocketInfo*)args;
     int multicast_sock = info->socket_fd;
@@ -388,14 +401,80 @@ void* send_questions(void* args){
     printf("Question: %s\n", question);
     // Send the questions through multicast
     send_multicast_message(multicast_sock, multicast_addr, QUESTION, question);
-    for(int i = 0; i < client_count; i++){
-        pthread_t listen_for_answer_thread;
-        pthread_create(&listen_for_answer_thread, NULL, listen_for_answer, (void*)&clients[i].socket);
-        pthread_detach(listen_for_answer_thread);
-    }
     sleep(QUESTION_TIMEOUT);
-    // ! SCOREBOARD
+    send_scoreboard(multicast_sock, multicast_addr);
+    sleep(SCOREBOARD_BREAK);
     return NULL;
+}
+
+void handle_client_answer(int client_sock, char* answer) {
+    pthread_mutex_lock(&client_mutex);
+    for (int i = 0; i < client_count; i++) {
+        if (clients[i].socket == client_sock) {
+            if (strcmp(answer, "b") == 0) { // ! CHANGE
+                clients[i].score++; // ! CHANGE
+            }
+            break;
+        }
+    }
+    pthread_mutex_unlock(&client_mutex);
+}
+
+void* handle_client_msg(void* arg){
+    ClientMsg* client_msg = (ClientMsg*)arg;
+    Message* msg = &client_msg->msg;
+    int sock = client_msg->socket;
+    switch (msg->type)
+    {
+        case ANSWER:
+            printf("Received answer from client: %s\n", msg->data);
+            handle_client_answer(sock, msg->data);
+            break;
+        case KEEP_ALIVE:
+            printf("Received keep alive message: %s\n", msg->data);
+            handle_keep_alive(sock);
+            break;
+        default:
+            break;
+    }
+    return NULL;
+}
+
+void* listen_for_messages(void* args){
+    // Every Unicast message coming for a specific client 
+    // will be handled in another thread
+    int sock = *(int*)args;
+    Message msg;
+    ClientMsg* client_msg = (ClientMsg*)args;
+    int bytes_receive_unicast =  0;
+    while(1){
+        bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
+        if (bytes_receive_unicast == 0) { // Closed socket
+            close(sock);
+            pthread_mutex_lock(&client_mutex);
+            for (int i = 0; i < client_count; i++) {
+                if (clients[i].socket == sock) {
+                    for (int j = i; j < client_count - 1; j++) {
+                        clients[j] = clients[j + 1];
+                    }
+                    client_count--;
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&client_mutex);
+            return NULL;
+        }
+        else if (bytes_receive_unicast < 0) {
+            perror("Error receiving message");
+            close(sock);
+            return NULL;
+        }
+        client_msg->msg = msg;
+        client_msg->socket = sock;
+        pthread_t handle_message_thread;
+        pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)client_msg);
+        pthread_detach(handle_message_thread);
+    }
 }
 
 int main() {
@@ -465,8 +544,15 @@ int main() {
     multicast_info->address = multicast_addr;
     multicast_info->addrlen = sizeof(multicast_addr);
     pthread_t keep_alive_thread;
-    pthread_create(&keep_alive_thread, NULL, keep_alive, (void*)multicast_info); // Multicast keep alive messages
+    pthread_create(&keep_alive_thread, NULL, send_keep_alive, (void*)multicast_info); // Multicast keep alive messages
     pthread_detach(keep_alive_thread);
+
+    // Open listen_for_messages thread for each client
+    for(int i = 0; i < client_count; i++){
+        pthread_t listen_for_messages_thread;
+        pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&clients[i].socket);
+        pthread_detach(listen_for_messages_thread);
+    }
 
     pthread_t send_questions_thread;
     pthread_create(&send_questions_thread, NULL, send_questions, (void*)multicast_info); // Multicast questions

@@ -333,6 +333,10 @@ void* handle_message(void* args) {
             fflush(stdin);
             printf("Got timeout for answer");
             break;
+        case SCOREBOARD:
+            printf("Got Scoreboard\n");
+            printf("%s\n", msg.data);
+            break;
         default:
             printf("Unknown message type: %d\n", msg.type);
             break;
