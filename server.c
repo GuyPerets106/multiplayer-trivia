@@ -420,7 +420,7 @@ void handle_client_answer(int client_sock, char* client_answer) {
     pthread_mutex_lock(&client_mutex);
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
-            if (strlen(client_answer) == 2){ // Including '\n'
+            if (strlen(client_answer) == 1){ 
                 printf("GOT HERE\n");
                 if (strncmp(client_answer, questions[curr_question_index].answer, 1) == 0) {    
                     // Compute elapsed time in seconds
