@@ -429,11 +429,12 @@ void handle_client_answer(int client_sock, char* client_answer) {
                     printf("Client got %d points\n", curr_score);
                     clients[i].score += curr_score;
                 }
+            }
             else {
+                printf("GOT HERE2\n");
                 send_message(client_sock, INVALID, "Invalid Answer");
             }
             break;
-            }
         }
     }
     pthread_mutex_unlock(&client_mutex);
