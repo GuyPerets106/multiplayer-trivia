@@ -16,7 +16,7 @@
 #define SERVER_IP "172.16.223.136"
 #define PORT 8080
 #define MULTICAST_IP "228.6.73.122"
-#define MULTICAST_PORT 12345
+#define MULTICAST_PORT 12346
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
@@ -189,7 +189,9 @@ void* handle_multicast(void* args){
     socklen_t addrlen = sizeof(*addr);
     while(game_started){
         memset(msg_multicast.data, 0, sizeof(msg_multicast.data));
+        printf("Waiting for multicast message...\n");
         bytes_receive_multicast = recvfrom(multicast_sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
+        printf("Received multicast message\n");
         if (bytes_receive_multicast > 0) {
             pthread_t handle_multicast_msg;
             MessageThreadArgs* thread_args = (MessageThreadArgs*)malloc(sizeof(MessageThreadArgs));

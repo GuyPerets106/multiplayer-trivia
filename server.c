@@ -15,7 +15,7 @@
 #include <time.h>
 
 #define PORT 8080
-#define MULTICAST_IP "228.12.1.1"
+#define MULTICAST_IP "228.6.73.122"
 #define MULTICAST_PORT 12345
 #define MAX_CLIENTS 100
 #define START_GAME_TIMEOUT 30
