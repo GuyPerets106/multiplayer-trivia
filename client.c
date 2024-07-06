@@ -29,6 +29,7 @@
 #define ANSWER 6
 #define KEEP_ALIVE 7
 #define SCOREBOARD 8
+#define GAME_OVER 9
 
 int game_started = 0;
 pthread_cond_t cond;
@@ -353,6 +354,13 @@ void* handle_message(void* args) {
         case SCOREBOARD:
             printf("Got Scoreboard\n");
             printf("%s\n", msg.data);
+            break;
+        case GAME_OVER:
+            printf("Game Over\n");
+            close(client_socket);
+            fflush(stdin);
+            client_socket = establish_connection(); // ? Close the program?
+            send_authentication_code(client_socket);
             break;
         default:
             printf("Unknown message type: %d\n", msg.type);

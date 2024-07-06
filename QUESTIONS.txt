@@ -1,50 +1,30 @@
-1. What does DHCP stand for?
-a) Dynamic Host Configuration Protocol
-b) Dynamic Hypertext Configuration Protocol
-c) Dynamic Host Control Protocol
-d) Dynamic Hyper Control Protocol
-2. Which port number is used by DHCP for client-server communication?
-a) 67 and 68
-b) 53 and 54
-c) 69 and 70
-d) 80 and 81
-3. In DHCP, what is the purpose of a lease time?
-a) To define the duration a client can use an IP address
-b) To set the time for server maintenance
-c) To allocate memory for DHCP operations
-d) To configure DNS settings
-4. What is the primary purpose of Multicast?
-a) To send data to a single destination
-b) To send data to multiple specific destinations
-c) To send data to all destinations
-d) To ensure data integrity
-5. Which of the following is a reserved multicast IP address range?
-a) 224.0.0.0 to 239.255.255.255
-b) 192.168.0.0 to 192.168.255.255
-c) 172.16.0.0 to 172.31.255.255
-d) 10.0.0.0 to 10.255.255.255
-6. What protocol is commonly used for multicast routing?
-a) OSPF
-b) RIP
-c) PIM
-d) BGP
-7. What does BGP stand for?
-a) Border Gateway Protocol
-b) Backup Gateway Protocol
-c) Base Gateway Protocol
-d) Basic Gateway Protocol
-8. Which type of BGP is used within a single autonomous system?
-a) eBGP
-b) iBGP
-c) mBGP
-d) sBGP
-9. In BGP, what is the purpose of AS-PATH?
-a) To list the autonomous systems that a route has traversed
-b) To set the path for packet transmission
-c) To define the security parameters of the route
-d) To assign the priority to routes
-10. What is the default BGP port number?
-a) 179
-b) 80
-c) 23
-d) 443
+Question: What is the difference between LAN and VLAN?
+A. LAN is a Local Area Network, VLAN is a Virtual LAN
+B. LAN uses IP addresses, VLAN uses MAC addresses
+C. LAN is slower than VLAN
+D. There is no difference
+A
+Question: What is changed in the Ethernet header to support VLAN?
+A. IP address
+B. MAC address
+C. VLAN tag
+D. Port number
+C
+Question: What is VLAN used for in a network?
+A. Increasing speed
+B. Segmenting networks
+C. Enhancing security
+D. All of the above
+D
+Question: What is the default VLAN tag number?
+A. 0
+B. 1
+C. 100
+D. 255
+B
+Question: How does a device find a DHCP Server?
+A. Through a broadcast request
+B. Using a fixed IP address
+C. Through ARP request
+D. Via DNS
+A

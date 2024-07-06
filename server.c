@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <time.h>
+#include <math.h>
 
 #define PORT 8080
 #define MULTICAST_IP "228.6.73.122"
@@ -23,12 +24,14 @@
 #define QUESTION_TIMEOUT 10
 #define KEEP_ALIVE_TIMEOUT 15
 #define SCOREBOARD_BREAK 5
+#define NUM_OF_QUESTIONS 5
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
 #define MAX_TRIES_MSG "Maximum number of tries exceeded"
 #define GAME_STARTED_MSG "Game already started"
 #define KEEP_ALIVE_MSG "Keep alive"
+#define FILENAME "questions.txt"
 
 #define AUTH_SUCCESS 0
 #define AUTH_FAIL 1
@@ -64,16 +67,50 @@ typedef struct {
     Message msg;
 } ClientMsg;
 
+typedef struct {
+    char question[1024];
+    char answer[1024];
+} QA;
+
 Client clients[MAX_CLIENTS];
 int client_count = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
 char* auth_code;
+QA questions[NUM_OF_QUESTIONS];
 char curr_question[1024];
+int curr_question_index = 0;
+time_t curr_question_start_time;
 
 void print_participants() {
     printf("Participants:\n");
     for (int i = 0; i < client_count; i++) {
         printf("%s:%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port));
+    }
+}
+
+void create_shuffled_questions(FILE* file){
+    QA questions[NUM_OF_QUESTIONS];
+    // Read 5 lines (question) and 1 line (answer) from FILENAME
+    for (int i = 0; i < NUM_OF_QUESTIONS; i++){
+        for(int j = 0; j < 5; j++){
+            char line[1024];
+            if (fgets(line, sizeof(line), file) == NULL) {
+                perror("Error reading file");
+            }
+            strcat(questions[i].question, line);
+        }
+        char line[1024];
+        if (fgets(line, sizeof(line), file) == NULL) {
+            perror("Error reading file");
+        }
+        strcpy(questions[i].answer, line);
+    }
+    // Shuffle the questions
+    for (int i = 0; i < NUM_OF_QUESTIONS; i++){
+        int random_index = rand() % NUM_OF_QUESTIONS;
+        QA temp = questions[i];
+        questions[i] = questions[random_index];
+        questions[random_index] = temp;
     }
 }
 
@@ -345,7 +382,7 @@ void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
 }
 
 void* send_questions(void* args){
-    FILE* file = fopen("QUESTIONS.txt", "r");
+    FILE* file = fopen(FILENAME, "r");
     int num_questions = 10;
     while(1) {
         if (client_count == 0){
@@ -354,9 +391,10 @@ void* send_questions(void* args){
         SocketInfo* info = (SocketInfo*)args;
         int multicast_sock = info->socket_fd;
         struct sockaddr_in multicast_addr = info->address;
-        read_question_from_file(file); 
+        strcpy(curr_question, questions[curr_question_index].question); 
         // printf("Question: %s\n", curr_question);
         // Send the questions through multicast
+        curr_question_start_time = time(NULL);
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
         sleep(QUESTION_TIMEOUT);
         send_scoreboard(multicast_sock, multicast_addr);
@@ -365,17 +403,21 @@ void* send_questions(void* args){
         if (num_questions == 0){
             break;
         }
+        curr_question_index++;
     }
     fclose(file);
     return NULL;
 }
 
-void handle_client_answer(int client_sock, char* answer) {
+void handle_client_answer(int client_sock, char* client_answer) {
+    time_t current_time = time(NULL);
     pthread_mutex_lock(&client_mutex);
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
-            if (strcmp(answer, "b") == 0) { // ! CHANGE
-                clients[i].score++; // ! CHANGE
+            if (strcmp(client_answer, questions[curr_question_index].answer) == 0) { // ! CHANGE
+                // Compute elapsed time in seconds
+                int elapsed_time = (int)difftime(current_time, curr_question_start_time);
+                clients[i].score += floor(30 / elapsed_time * 100 + 10);
             }
             break;
         }
@@ -391,6 +433,7 @@ void* handle_client_msg(void* arg){
     {
         case ANSWER:
             printf("Received answer from client: %s\n", msg->data);
+
             handle_client_answer(sock, msg->data);
             break;
         case KEEP_ALIVE:
@@ -411,6 +454,9 @@ void* listen_for_messages(void* args){
     ClientMsg client_msg;
     int bytes_receive_unicast =  0;
     while(1){
+        if (client_count == 0){
+            break;
+        }
         bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
         if (bytes_receive_unicast == 0) { // Closed socket
             printf("Client disconnected\n");
@@ -439,6 +485,7 @@ void* listen_for_messages(void* args){
         pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
         pthread_detach(handle_message_thread);
     }
+    return NULL;
 }
 
 int main() {
@@ -527,6 +574,7 @@ int main() {
     pthread_join(send_questions_thread, NULL);
 
     // Multicast Game-Over message
+    send_multicast_message(multicast_sock, multicast_addr, GAME_STARTED, "Game Over");
     
     printf("Game Over\n");
     while(1); 
