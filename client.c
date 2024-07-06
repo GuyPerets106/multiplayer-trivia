@@ -228,7 +228,7 @@ void* handle_multicast(void* args){
             thread_args->msg = msg_multicast;
             // printf("Message received: %s\n", msg_multicast.data);
             pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)thread_args);
-            pthread_join(handle_multicast_msg, NULL);
+            pthread_detach(handle_multicast_msg, NULL);
             continue;
         }
         else if (bytes_receive_multicast == 0) { // Socket closed
