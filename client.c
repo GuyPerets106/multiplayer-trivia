@@ -93,19 +93,32 @@ void receive_multicast(int sock) {
 }
 
 void answer_question() {
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);  // Set stdin to non-blocking
-    printf("Enter your answer: ");
-    while (1) {
-        int ret = scanf("%s", curr_answer);
-        if (ret > 0) {
-            break;
-        } else if (ret == EOF) {
-            clearerr(stdin);  // Clear EOF flag if reached
+    while(1){
+        fd_set set;
+        struct timeval timeout;
+
+        // Initialize the file descriptor set
+        FD_ZERO(&set);
+        FD_SET(STDIN_FILENO, &set);
+
+        // Initialize the timeout data structure
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 500000; // 500ms
+
+        // Check if there's input on stdin
+        int rv = select(STDIN_FILENO + 1, &set, NULL, NULL, &timeout);
+        if (rv == -1) {
+            perror("select"); // Error occurred in select()
+        } else if (rv == 0) {
+            continue;
+        } else {
+            // Data is available, perform non-blocking read
+            if (FD_ISSET(STDIN_FILENO, &set)) {
+                scanf("%s", curr_answer);
+                break;
+            }
         }
-        usleep(100000);  // Sleep for 100 ms to avoid busy-waiting
     }
-    fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK);  // Set stdin back to blocking
     fflush(stdin);
 }
 
@@ -325,7 +338,7 @@ void* handle_message(void* args) {
         case QUESTION: // Receive Multicast
             printf("%s", msg.data);
             curr_question_thread = pthread_self(); // ! Consider Mutex
-            answer_question(); // blocking on scanf
+            answer_question();
             printf("My Answer: %s\n", curr_answer);
             send_message(client_socket, ANSWER, curr_answer);
             break;
