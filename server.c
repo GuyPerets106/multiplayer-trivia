@@ -230,6 +230,13 @@ void *new_client_handler(void *arg) {
     return NULL;
 }
 
+void print_participants() {
+    printf("Participants:\n");
+    for (int i = 0; i < client_count; i++) {
+        printf("%s:%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port));
+    }
+}
+
 void* wait_for_connections(void* arg){
     SocketInfo* info = (SocketInfo*)arg;
     int server_fd = info->socket_fd; // Welcome Socket
@@ -261,6 +268,8 @@ void* wait_for_connections(void* arg){
         }
         if (ret == 0) { // Timeout
             printf("Time frame of %d seconds has expired. No more connections accepted.\n", START_GAME_TIMEOUT);
+            print_participants();
+            sleep(2);
             break;
         }
         if (FD_ISSET(server_fd, &tmp_fds)) {
@@ -333,53 +342,6 @@ char* read_question_from_file() {
     return question;
 }
 
-void* listen_for_answer(void* arg){
-    // Listen for answers from specific client - unicast
-    int socket = *(int*)arg;
-    char buffer[1024];
-    // Use select with timeout
-    fd_set read_fds;
-    FD_ZERO(&read_fds);
-    FD_SET(socket, &read_fds);
-    struct timeval tv;
-    tv.tv_sec = QUESTION_TIMEOUT;
-    tv.tv_usec = 0;
-    int ret = select(socket + 1, &read_fds, NULL, NULL, &tv);
-    if (ret < 0) {
-        perror("Error in select function");
-        close(socket);
-        return NULL;
-    }
-    if (ret == 0) { // Timeout
-        printf("Timeout for receiving answer from client\n");
-        send_message(socket, ANSWER, "No answer received");
-        return NULL;
-    }
-    int bytes_receive_unicast = recv(socket, buffer, sizeof(buffer), 0); 
-    if (bytes_receive_unicast == 0) { // Closed socket
-        close(socket);
-        pthread_mutex_lock(&client_mutex);
-        for (int i = 0; i < client_count; i++) {
-            if (clients[i].socket == socket) {
-                for (int j = i; j < client_count - 1; j++) {
-                    clients[j] = clients[j + 1];
-                }
-                client_count--;
-                break;
-            }
-        }
-        pthread_mutex_unlock(&client_mutex);
-        return NULL;
-    }
-    else if (bytes_receive_unicast < 0) {
-        perror("Error receiving answer");
-        close(socket);
-        return NULL;
-    }
-    printf("Received answer from client: %s\n", buffer);
-    // Add Scoreboard Phase
-    return NULL;
-}
 
 void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
     char scoreboard[1024];
@@ -547,7 +509,7 @@ int main() {
     pthread_create(&keep_alive_thread, NULL, send_keep_alive, (void*)multicast_info); // Multicast keep alive messages
     pthread_detach(keep_alive_thread);
 
-    // Open listen_for_messages thread for each client
+    // Open listen_for_messages thread for each client (Unicast)
     for(int i = 0; i < client_count; i++){
         pthread_t listen_for_messages_thread;
         pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&clients[i].socket);
