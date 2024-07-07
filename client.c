@@ -98,7 +98,7 @@ void answer_question() {
     fflush(stdin);
     fflush(stdout);
     printf("Enter your answer: ");
-    scanf("%s", curr_answer);
+    scanf(" %s", curr_answer);
     fflush(stdin);
 }
 
@@ -172,8 +172,6 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
         else if (bytes_receive_unicast == 0) { // Socket closed
             printf("Server disconnected\n");
             fflush(stdin);
-            // stdin should be blocking
-            fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL, 0) & ~O_NONBLOCK);
             sock = establish_connection();
             send_authentication_code(sock);
             continue;
