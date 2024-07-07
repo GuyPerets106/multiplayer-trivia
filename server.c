@@ -218,6 +218,7 @@ void* handle_client_msg(void* arg){
                 }
             }
             pthread_mutex_unlock(&client_mutex);
+            break;
         case ANSWER:
             handle_client_answer(sock, msg->data);
             break;
