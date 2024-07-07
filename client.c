@@ -343,7 +343,8 @@ void* handle_message(void* args) {
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         case QUESTION: // Receive Multicast
-            printf("%s", msg.data);
+            fflush(stdout);
+            printf("\n%s", msg.data);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             answer_question();
             send_message(client_socket, ANSWER, curr_answer);
