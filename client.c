@@ -278,6 +278,7 @@ void* handle_message(void* args) {
     MessageThreadArgs thread_args = *(MessageThreadArgs*)args;
     Message msg = thread_args.msg;
     int client_socket = thread_args.socket;
+    int name_flag = 1;
     switch (msg.type) {
         case AUTH_FAIL:
             printf("Authentication Failed: '%s'\n", msg.data);
@@ -288,7 +289,7 @@ void* handle_message(void* args) {
             printf("Choose your game name:\n");
             char username[1024];
             fd_set readfds;
-            while(1){
+            while(name_flag){
                 struct timeval tv;
                 tv.tv_sec = 5;
                 tv.tv_usec = 0;
@@ -304,12 +305,12 @@ void* handle_message(void* args) {
                 }
                 else if(ret){
                     scanf(" %s", username);
-                    break;
+                    name_flag = 0;
                 }
                 else{
                     username[0] = '\0';
                     printf("No game name entered, using your IP address...\n");
-                    break;
+                    name_flag = 0;
                 }
             }
             send_message(client_socket, AUTH_SUCCESS, username);
