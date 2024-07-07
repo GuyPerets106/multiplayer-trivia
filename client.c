@@ -98,7 +98,7 @@ void answer_question() {
     fflush(stdin);
     fflush(stdout);
     printf("Enter your answer: ");
-    scanf(" %s", curr_answer);
+    scanf("%s", curr_answer);
     fflush(stdin);
 }
 
@@ -306,8 +306,7 @@ void* handle_message(void* args) {
                     exit(1);
                 }
                 else if(ret){
-                    fgets(username, sizeof(username), stdin);
-                    username[strcspn(username, "\n")] = 0;  // Remove newline character
+                    scanf("%s", username);
                     break;
                 }
                 else{
