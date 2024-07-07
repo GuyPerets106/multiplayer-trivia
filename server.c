@@ -96,6 +96,7 @@ void print_participants() {
 void create_shuffled_questions(FILE* file){
     // Read 5 lines (question) and 1 line (answer) from FILENAME
     for (int i = 0; i < NUM_OF_QUESTIONS; i++){
+        questions[i].question[0] = '\0';
         for(int j = 0; j < 5; j++){
             char line[1024];
             if (fgets(line, sizeof(line), file) == NULL) {
