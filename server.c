@@ -167,24 +167,23 @@ void send_multicast_message(int sock, struct sockaddr_in addr, int msg_type, con
 
 void generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
     srand(time(NULL));
-    char code[7];
     for (int i = 0; i < 6; i++)
     {
         int type = rand() % 3;
         switch (type)
         {
         case 0:
-            code[i] = 'a' + rand() % 26;
+            auth_code[i] = 'a' + rand() % 26;
             break;
         case 1:
-            code[i] = 'A' + rand() % 26;
+            auth_code[i] = 'A' + rand() % 26;
             break;
         case 2:
-            code[i] = '0' + rand() % 10;
+            auth_code[i] = '0' + rand() % 10;
             break;
         }
     }
-    code[6] = '\0';
+    auth_code[6] = '\0';
 }
 
 void handle_keep_alive(int client_sock) {
@@ -566,7 +565,7 @@ int main() {
         }
     }
     printf("Connect to server with IP: %s and port: %d\n", ip, ntohs(address.sin_port));
-    printf("Server started with authentication code %s. Waiting for connections...\n", auth_code);
+    printf("Server started with authentication code %s\nWaiting for connections...\n", auth_code);
 
     // Start Connection Phase - Wait For Connections Thread
     pthread_t wait_for_connections_thread;
