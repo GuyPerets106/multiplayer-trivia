@@ -342,7 +342,7 @@ void* handle_message(void* args) {
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         case QUESTION: // Receive Multicast
-            printf("%s", msg.data);
+            printf(" %s", msg.data);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             answer_question();
             send_message(client_socket, ANSWER, curr_answer);
@@ -354,7 +354,7 @@ void* handle_message(void* args) {
             break;
         case SCOREBOARD:
             printf("Got Scoreboard\n");
-            printf("%s", msg.data);
+            printf(" %s", msg.data);
             break;
         case GAME_OVER:
             printf("Game Over\n");
