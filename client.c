@@ -288,10 +288,8 @@ void* handle_message(void* args) {
             send_authentication_code(client_socket);
             break;
         case AUTH_SUCCESS:
-            fflush(stdin);
-            fflush(stdout);
             printf("Authentication Successful\n");
-            printf("Choose your game name: ");
+            printf("Choose your game name:\n");
             char username[1024];
             while(1){
                 fd_set readfds;
