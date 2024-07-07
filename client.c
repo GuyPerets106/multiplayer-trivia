@@ -203,6 +203,7 @@ void* handle_multicast(void* args){
             thread_args.socket = unicast_sock;
             thread_args.msg = msg_multicast;
             pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)&thread_args);
+            printf("\n");
             pthread_detach(handle_multicast_msg);
             continue;
         }
