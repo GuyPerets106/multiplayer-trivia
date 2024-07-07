@@ -19,7 +19,7 @@
 
 
 #define PORT 8080
-#define INTERFACE_NAME "en0"
+#define INTERFACE_NAME "ens160"
 #define MULTICAST_IP "228.6.73.122"
 #define MULTICAST_PORT 12345
 #define MAX_CLIENTS 100
@@ -233,7 +233,8 @@ void* handle_client_msg(void* arg){
             pthread_mutex_lock(&client_mutex);
             for (int i = 0; i < client_count; i++) {
                 if (clients[i].socket == sock) {
-                    strcpy(clients[i].name, msg->data);
+                    if(strlen(msg->data) > 0) strcpy(clients[i].name, msg->data);
+                    else strcpy(clients[i].name, inet_ntoa(clients[i].address.sin_addr));
                     break;
                 }
             }
@@ -627,7 +628,7 @@ int main() {
     pthread_create(&monitor_clients_thread, NULL, monitor_clients, (void*)&send_questions_thread); // Multicast keep alive messages
     pthread_join(monitor_clients_thread, NULL);
     // Multicast Game-Over message
-    send_multicast_message(multicast_sock, multicast_addr, GAME_STARTED, "Game Over");
+    send_multicast_message(multicast_sock, multicast_addr, GAME_OVER, "Game Over");
     
     printf("Game Over\n");
     // Kill the threads
