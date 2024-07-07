@@ -312,9 +312,10 @@ void* handle_message(void* args) {
                     break;
                 }
             }
-            FD_CLR(0, &readfds);
             send_message(client_socket, AUTH_SUCCESS, username);
             printf("Waiting for the game to start...\n");
+            fflush(stdin);
+            fflush(stdout);
             break;
         case MAX_TRIES:
             printf("Maximum number of tries exceeded, disconnecting...\n\n");
