@@ -35,7 +35,7 @@
 #define MAX_TRIES_MSG "Maximum number of tries exceeded"
 #define GAME_STARTED_MSG "Game already started"
 #define KEEP_ALIVE_MSG "Keep alive"
-#define FILENAME "questions.txt"
+#define FILENAME "QUESTIONS.txt"
 
 #define AUTH_SUCCESS 0
 #define AUTH_FAIL 1
