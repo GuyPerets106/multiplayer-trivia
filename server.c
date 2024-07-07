@@ -478,7 +478,11 @@ void handle_client_answer(int client_sock, char* client_answer) {
                 if (strncmp(client_answer, questions[curr_question_index].answer, 1) == 0) {    
                     // Compute elapsed time in seconds
                     int elapsed_time = (int)difftime(current_time, curr_question_start_time);
-                    int curr_score = floor(30 / elapsed_time * 100 + 10);
+                    if (elapsed_time > QUESTION_TIMEOUT) {
+                        send_message(client_sock, ANSWER, "Time is up");
+                        break;
+                    }
+                    int curr_score = floor(30 / elapsed_time * 100 + elapsed_time);
                     printf("%s got %d points\n", clients[i].name, curr_score);
                     clients[i].score += curr_score;
                 }
@@ -588,5 +592,6 @@ int main() {
     pthread_cancel(keep_alive_thread);
     pthread_cancel(deny_connections_thread);
     close(server_fd);
+    close(multicast_sock);
     return 0;
 }
