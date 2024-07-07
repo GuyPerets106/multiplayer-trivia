@@ -77,7 +77,7 @@ void send_authentication_code(int sock){
     char auth_buffer[1024];
     memset(auth_buffer, 0, sizeof(auth_buffer));
     printf("Enter the authentication code: ");
-    scanf(" %s", auth_buffer);
+    scanf("%s", auth_buffer);
     send(sock, auth_buffer, strlen(auth_buffer), 0);
 }
 
@@ -96,7 +96,7 @@ void receive_multicast(int sock) {
 
 void answer_question() {
     printf("Enter your answer: ");
-    scanf(" %s", curr_answer);
+    scanf("%s", curr_answer);
 }
 
 int establish_connection(){
@@ -112,9 +112,9 @@ int establish_connection(){
     while((sock = socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
         if (!address_ok) {
             printf("Enter the IP address of the server: ");
-            scanf(" %s", server_ip);
+            scanf("%s", server_ip);
             printf("Enter the port number of the server: ");
-            scanf(" %d", &server_port);
+            scanf("%d", &server_port);
         }
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_port = htons(server_port);
@@ -304,7 +304,7 @@ void* handle_message(void* args) {
                     exit(1);
                 }
                 else if(ret){
-                    scanf(" %s", username);
+                    scanf("%s", username);
                     name_flag = 0;
                 }
                 else{
@@ -340,7 +340,7 @@ void* handle_message(void* args) {
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         case QUESTION: // Receive Multicast
-            printf(" %s", msg.data);
+            printf("%s", msg.data);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             answer_question();
             send_message(client_socket, ANSWER, curr_answer);
@@ -352,7 +352,7 @@ void* handle_message(void* args) {
             break;
         case SCOREBOARD:
             printf("Got Scoreboard\n");
-            printf(" %s", msg.data);
+            printf("%s", msg.data);
             break;
         case GAME_OVER:
             printf("Game Over\n");
@@ -364,7 +364,6 @@ void* handle_message(void* args) {
             printf("Invalid Answer\n");
             curr_question_thread = pthread_self(); // ! Consider Mutex
             answer_question();
-            printf("My Answer: %s\n", curr_answer);
             send_message(client_socket, ANSWER, curr_answer);
             break;
         default:
