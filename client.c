@@ -315,8 +315,6 @@ void* handle_message(void* args) {
             }
             send_message(client_socket, AUTH_SUCCESS, username);
             printf("Waiting for the game to start...\n");
-            fflush(stdin);
-            fflush(stdout);
             break;
         case MAX_TRIES:
             printf("Maximum number of tries exceeded, disconnecting...\n\n");
@@ -359,7 +357,6 @@ void* handle_message(void* args) {
         case GAME_OVER:
             printf("Game Over\n");
             close(client_socket);
-            fflush(stdin);
             client_socket = establish_connection(); // ? Close the program?
             send_authentication_code(client_socket);
             break;
