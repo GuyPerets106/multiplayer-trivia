@@ -14,8 +14,12 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+
 
 #define PORT 8080
+#define INTERFACE_NAME "en0"
 #define MULTICAST_IP "228.6.73.122"
 #define MULTICAST_PORT 12345
 #define MAX_CLIENTS 100
@@ -80,12 +84,12 @@ typedef struct {
 Client clients[MAX_CLIENTS];
 int client_count = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
-char* auth_code;
 QA questions[NUM_OF_QUESTIONS];
 char curr_question[1024];
 int curr_question_index = 0;
 time_t curr_question_start_time;
 int game_over_flag = 0;
+char auth_code[7];
 
 void print_participants() {
     printf("Participants:\n");
@@ -161,9 +165,9 @@ void send_multicast_message(int sock, struct sockaddr_in addr, int msg_type, con
     sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&addr, sizeof(addr));
 }
 
-char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
+void generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
     srand(time(NULL));
-    char* code = (char*)malloc(7);
+    char code[7];
     for (int i = 0; i < 6; i++)
     {
         int type = rand() % 3;
@@ -181,7 +185,6 @@ char* generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
         }
     }
     code[6] = '\0';
-    return code;
 }
 
 void handle_keep_alive(int client_sock) {
@@ -515,17 +518,23 @@ int main() {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     pthread_t thread_id;
-    auth_code = generate_random_code();
+    generate_random_code();
 
     // Create TCP socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
+    if (setsockopt(server_fd, SOL_SOCKET, SO_BINDTODEVICE, INTERFACE_NAME, strlen(INTERFACE_NAME)) < 0) {
+        perror("setsockopt(SO_BINDTODEVICE) failed");
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
 
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY; 
+    address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
+
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind failed");
@@ -540,6 +549,23 @@ int main() {
     FILE* questions_file = fopen(FILENAME, "r");
     create_shuffled_questions(questions_file);
     fclose(questions_file);
+    struct ifaddrs *ifaddr, *ifa;
+    char ip[INET_ADDRSTRLEN];
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        exit(EXIT_FAILURE);
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL)
+            continue;
+
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
+            inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
+        }
+    }
+    printf("Connect to server with IP: %s and port: %d\n", ip, ntohs(address.sin_port));
     printf("Server started with authentication code %s. Waiting for connections...\n", auth_code);
 
     // Start Connection Phase - Wait For Connections Thread
