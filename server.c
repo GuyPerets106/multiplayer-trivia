@@ -437,10 +437,10 @@ void* deny_new_connections(void* arg) {
 
 
 void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
-    char scoreboard[2048];
+    char scoreboard[1024];
     sprintf(scoreboard, "\n==========Scoreboard==========\n");
     for (int i = 0; i < client_count; i++) {
-        char client_score[2048];
+        char client_score[];
         sprintf(client_score, "%s\t%d\n", clients[i].name, clients[i].score);
         strcat(scoreboard, client_score);
     }
