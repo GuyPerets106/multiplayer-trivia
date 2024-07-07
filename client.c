@@ -291,26 +291,29 @@ void* handle_message(void* args) {
             printf("Authentication Successful\n");
             printf("Choose your game name: ");
             char username[1024];
-            fd_set readfds;
-            struct timeval tv;
-            tv.tv_sec = 5;
-            tv.tv_usec = 0;
-            int ret;
-            FD_ZERO(&readfds);
-            FD_SET(0, &readfds);
-            // Use select to see if a game name is entered
-            // If not, send ''
-            ret = select(1, &readfds, NULL, NULL, &tv);
-            if(ret == -1){
-                perror("select");
-                exit(1);
-            }
-            if(FD_ISSET(0, &readfds)){
-                fgets(username, sizeof(username), stdin);
-                username[strcspn(username, "\n")] = 0;  // Remove newline character
-            }
-            else{
-                username[0] = '\0';
+            while(1){
+                fd_set readfds;
+                struct timeval tv;
+                tv.tv_sec = 5;
+                tv.tv_usec = 0;
+                int ret;
+                FD_ZERO(&readfds);
+                FD_SET(0, &readfds);
+                // Use select to see if a game name is entered
+                // If not, send ''
+                ret = select(1, &readfds, NULL, NULL, &tv);
+                if(ret == -1){
+                    perror("select");
+                    exit(1);
+                }
+                else if(FD_ISSET(0, &readfds)){
+                    fgets(username, sizeof(username), stdin);
+                    username[strcspn(username, "\n")] = 0;  // Remove newline character
+                }
+                else{
+                    username[0] = '\0';
+                    break;
+                }
             }
             send_message(client_socket, AUTH_SUCCESS, username);
             printf("Waiting for the game to start...\n");
