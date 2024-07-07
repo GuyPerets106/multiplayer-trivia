@@ -24,7 +24,7 @@
 #define QUESTION_TIMEOUT 10
 #define KEEP_ALIVE_TIMEOUT 15
 #define SCOREBOARD_BREAK 5
-#define NUM_OF_QUESTIONS 5
+#define NUM_OF_QUESTIONS 100
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
@@ -184,7 +184,7 @@ void* send_keep_alive(void* arg) { // Multicast
 
     while (1) {
         send_multicast_message(multicast_sock, multicast_addr, KEEP_ALIVE, KEEP_ALIVE_MSG);
-        printf("Sent keep alive message\n");
+        // printf("Sent keep alive message\n");
         sleep(KEEP_ALIVE_INTERVAL);
         // Check if specific clients did not send keep alive messages
         pthread_mutex_lock(&client_mutex);
