@@ -28,3 +28,183 @@ B. Using a fixed IP address
 C. Through ARP request
 D. Via DNS
 A
+What does the acronym NAT stand for?
+A. Network Address Translation
+B. Network Address Transmission
+C. Node Address Translation
+D. Node Address Transmission
+A
+Which protocol is used to find the MAC address of a local device?
+A. ARP
+B. DNS
+C. DHCP
+D. ICMP
+A
+What is the default administrative distance of OSPF?
+A. 90
+B. 100
+C. 110
+D. 120
+C
+Which layer of the OSI model is responsible for end-to-end communication?
+A. Transport
+B. Network
+C. Data Link
+D. Session
+A
+What command is used to view the current running configuration on a Cisco router?
+A. show config
+B. show running-config
+C. show startup-config
+D. show version
+B
+Which IP address class has the most host addresses available by default?
+A. Class A
+B. Class B
+C. Class C
+D. Class D
+A
+What protocol does Ping use?
+A. TCP
+B. UDP
+C. ICMP
+D. ARP
+C
+Which of the following is a distance-vector routing protocol?
+A. OSPF
+B. EIGRP
+C. RIP
+D. BGP
+C
+What is the default port number for HTTPS?
+A. 80
+B. 443
+C. 21
+D. 25
+B
+In which type of network topology is each node connected to every other node?
+A. Star
+B. Mesh
+C. Bus
+D. Ring
+B
+What does VLAN stand for?
+A. Virtual Local Area Network
+B. Virtual Line Area Network
+C. Virtual Link Access Network
+D. Virtual Loopback Area Network
+A
+Which protocol provides encryption and authentication for secure data transmission over IP networks?
+A. HTTPS
+B. FTP
+C. IPsec
+D. SNMP
+C
+What is the function of a router in a network?
+A. Connects devices within the same network
+B. Filters and forwards traffic between networks
+C. Translates domain names into IP addresses
+D. Provides wireless connectivity
+B
+Which command is used to configure a static route on a Cisco router?
+A. ip route
+B. route add
+C. add route
+D. static route
+A
+What does BGP stand for?
+A. Border Gateway Protocol
+B. Backup Gateway Protocol
+C. Base Gateway Protocol
+D. Bridge Gateway Protocol
+A
+Which layer of the OSI model is responsible for path determination and logical addressing?
+A. Data Link
+B. Transport
+C. Network
+D. Session
+C
+What is the default lease time for a DHCP lease in Windows Server?
+A. 8 hours
+B. 12 hours
+C. 24 hours
+D. 7 days
+C
+Which Cisco IOS command is used to view the routing table?
+A. show routes
+B. show ip routes
+C. show ip route
+D. show routing-table
+C
+What is the main purpose of the Spanning Tree Protocol (STP)?
+A. Prevent network loops
+B. Provide IP addressing
+C. Facilitate routing
+D. Encrypt data
+A
+Which of the following is a characteristic of the UDP protocol?
+A. Connection-oriented
+B. Reliable delivery
+C. Connectionless
+D. Flow control
+C
+Which protocol is used to assign IP addresses automatically to devices on a network?
+A. DNS
+B. DHCP
+C. FTP
+D. HTTP
+B
+What is the purpose of the ARP protocol?
+A. To map IP addresses to MAC addresses
+B. To map MAC addresses to IP addresses
+C. To route data between networks
+D. To provide authentication
+A
+Which of the following is a characteristic of the TCP protocol?
+A. Connectionless
+B. Unreliable delivery
+C. Connection-oriented
+D. Low overhead
+C
+What is the size of an IPv6 address?
+A. 32 bits
+B. 64 bits
+C. 128 bits
+D. 256 bits
+C
+Which command is used to display the IP address configuration of a Windows computer?
+A. ipconfig
+B. ifconfig
+C. ip addr
+D. ip show
+A
+What type of cable is used to connect two network devices directly without a switch?
+A. Crossover cable
+B. Straight-through cable
+C. Coaxial cable
+D. Fiber optic cable
+A
+Which protocol is used for secure remote login to a network device?
+A. Telnet
+B. FTP
+C. SSH
+D. SNMP
+C
+What does the 'ping' command do?
+A. Measures round-trip time for messages sent from the originating host
+B. Maps IP addresses to domain names
+C. Configures network interfaces
+D. Displays the routing table
+A
+Which layer of the OSI model handles error detection and correction?
+A. Physical
+B. Data Link
+C. Network
+D. Transport
+B
+Which of the following addresses are private IP addresses?
+A. 10.0.0.1
+B. 192.168.1.1
+C. 172.16.0.1
+D. All of the above
+D

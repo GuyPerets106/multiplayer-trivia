@@ -45,11 +45,14 @@
 #define GAME_OVER 9
 #define INVALID 10
 
+void handle_client_answer(int client_sock, char* client_answer);
+
 typedef struct {
     int socket;
     struct sockaddr_in address;
     time_t last_keep_alive_time;
     int score;
+    char name[1024];
 } Client;
 
 typedef struct {
@@ -86,7 +89,7 @@ time_t curr_question_start_time;
 void print_participants() {
     printf("Participants:\n");
     for (int i = 0; i < client_count; i++) {
-        printf("%s:%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port));
+        printf("%s:%d - %s\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port), clients[i].name);
     }
 }
 
@@ -188,7 +191,7 @@ void* send_keep_alive(void* arg) { // Multicast
         for (int i = 0; i < client_count; i++) {
             time_t current_time = time(NULL);
             if (current_time - clients[i].last_keep_alive_time > KEEP_ALIVE_TIMEOUT) {
-                printf("Client %s:%d did not send keep alive messages. Removing him from the game...\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port));
+                printf("%s did not send keep alive messages. Removing him from the game...\n", clients[i].name);
                 close(clients[i].socket); // ! Alon thinks we should try again with unicast message
                 for (int j = i; j < client_count - 1; j++) {
                     clients[j] = clients[j + 1];
@@ -198,6 +201,75 @@ void* send_keep_alive(void* arg) { // Multicast
         }
         pthread_mutex_unlock(&client_mutex);
     }
+}
+
+void* handle_client_msg(void* arg){
+    ClientMsg* client_msg = (ClientMsg*)arg;
+    Message* msg = &client_msg->msg;
+    int sock = client_msg->socket;
+    switch (msg->type)
+    {
+        case AUTH_SUCCESS:
+            pthread_mutex_lock(&client_mutex);
+            for (int i = 0; i < client_count; i++) {
+                if (clients[i].socket == sock) {
+                    strcpy(clients[i].name, msg->data);
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&client_mutex);
+        case ANSWER:
+            handle_client_answer(sock, msg->data);
+            break;
+        case KEEP_ALIVE:
+            handle_keep_alive(sock);
+            break;
+        default:
+            break;
+    }
+    return NULL;
+}
+
+void* listen_for_messages(void* args){
+    // Every Unicast message coming for a specific client 
+    // will be handled in another thread
+    int sock = *(int*)args;
+    Message msg;
+    ClientMsg client_msg;
+    int bytes_receive_unicast =  0;
+    while(1){
+        if (client_count == 0){
+            break;
+        }
+        bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
+        if (bytes_receive_unicast == 0) { // Closed socket
+            close(sock);
+            pthread_mutex_lock(&client_mutex);
+            for (int i = 0; i < client_count; i++) {
+                if (clients[i].socket == sock) {
+                    printf("%s disconnected\n", clients[i].name);
+                    for (int j = i; j < client_count - 1; j++) {
+                        clients[j] = clients[j + 1];
+                    }
+                    client_count--;
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&client_mutex);
+            return NULL;
+        }
+        else if (bytes_receive_unicast < 0) {
+            perror("Error receiving message");
+            close(sock);
+            return NULL;
+        }
+        client_msg.msg = msg;
+        client_msg.socket = sock;
+        pthread_t handle_message_thread;
+        pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
+        pthread_detach(handle_message_thread);
+    }
+    return NULL;
 }
 
 
@@ -245,6 +317,9 @@ void* authenticate_client(void* arg) {
         }
     }
     printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+    pthread_t listen_for_messages_thread;
+    pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&socket);
+    pthread_detach(listen_for_messages_thread);
     return NULL;
 }
 
@@ -255,26 +330,6 @@ void* distribute_multicast_address(void* arg){ // Using unicast messages
         send_message(clients[i].socket, GAME_STARTING, multicast_address);
     }
     sleep(1);
-}
-
-void *new_client_handler(void *arg) {
-    Client client = *(Client *)arg;
-    char buffer[1024];
-
-    // Receive client's readiness for the quiz
-    recv(client.socket, buffer, sizeof(buffer), 0);
-    printf("Client response: %s\n", buffer);
-
-    // Simulate receiving answers
-    while (1) {
-        int len = recv(client.socket, buffer, sizeof(buffer), 0);
-        if (len <= 0) break;
-        buffer[len] = '\0';
-        printf("Received answer from client: %s\n", buffer);
-    }
-
-    close(client.socket);
-    return NULL;
 }
 
 void* wait_for_connections(void* arg){
@@ -357,29 +412,13 @@ void* deny_new_connections(void* arg) {
     }
 }
 
-void read_question_from_file(FILE* file) {
-    // Read 5 lines each time a question is needed
-    // Empty curr_question
-    curr_question[0] = '\0';
-    if (file == NULL) {
-        perror("Error opening file");
-    }
-    for (int i = 0; i < 5; i++) {
-        char line[1024];
-        if (fgets(line, sizeof(line), file) == NULL) {
-            perror("Error reading file");
-        }
-        strcat(curr_question, line);
-    }
-}
-
 
 void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
     char scoreboard[1024];
     sprintf(scoreboard, "\n==========Scoreboard==========\n");
     for (int i = 0; i < client_count; i++) {
         char client_score[1024];
-        sprintf(client_score, "%s:%d\t%d\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port), clients[i].score);
+        sprintf(client_score, "%s\t%d\n", clients[i].name, clients[i].score);
         strcat(scoreboard, client_score);
     }
     strcat(scoreboard, "\n");
@@ -421,86 +460,21 @@ void handle_client_answer(int client_sock, char* client_answer) {
     for (int i = 0; i < client_count; i++) {
         if (clients[i].socket == client_sock) {
             if (strlen(client_answer) == 1){ 
-                printf("GOT HERE\n");
                 if (strncmp(client_answer, questions[curr_question_index].answer, 1) == 0) {    
                     // Compute elapsed time in seconds
                     int elapsed_time = (int)difftime(current_time, curr_question_start_time);
                     int curr_score = floor(30 / elapsed_time * 100 + 10);
-                    printf("Client got %d points\n", curr_score);
+                    printf("%s got %d points\n", clients[i].name, curr_score);
                     clients[i].score += curr_score;
                 }
             }
             else {
-                printf("GOT HERE2\n");
                 send_message(client_sock, INVALID, "Invalid Answer");
             }
             break;
         }
     }
     pthread_mutex_unlock(&client_mutex);
-}
-
-void* handle_client_msg(void* arg){
-    ClientMsg* client_msg = (ClientMsg*)arg;
-    Message* msg = &client_msg->msg;
-    int sock = client_msg->socket;
-    switch (msg->type)
-    {
-        case ANSWER:
-            printf("Received answer from client: %s\n", msg->data);
-
-            handle_client_answer(sock, msg->data);
-            break;
-        case KEEP_ALIVE:
-            printf("Received keep alive message: %s\n", msg->data);
-            handle_keep_alive(sock);
-            break;
-        default:
-            break;
-    }
-    return NULL;
-}
-
-void* listen_for_messages(void* args){
-    // Every Unicast message coming for a specific client 
-    // will be handled in another thread
-    int sock = *(int*)args;
-    Message msg;
-    ClientMsg client_msg;
-    int bytes_receive_unicast =  0;
-    while(1){
-        if (client_count == 0){
-            break;
-        }
-        bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
-        if (bytes_receive_unicast == 0) { // Closed socket
-            printf("Client disconnected\n");
-            close(sock);
-            pthread_mutex_lock(&client_mutex);
-            for (int i = 0; i < client_count; i++) {
-                if (clients[i].socket == sock) {
-                    for (int j = i; j < client_count - 1; j++) {
-                        clients[j] = clients[j + 1];
-                    }
-                    client_count--;
-                    break;
-                }
-            }
-            pthread_mutex_unlock(&client_mutex);
-            return NULL;
-        }
-        else if (bytes_receive_unicast < 0) {
-            perror("Error receiving message");
-            close(sock);
-            return NULL;
-        }
-        client_msg.msg = msg;
-        client_msg.socket = sock;
-        pthread_t handle_message_thread;
-        pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
-        pthread_detach(handle_message_thread);
-    }
-    return NULL;
 }
 
 int main() {
@@ -581,11 +555,11 @@ int main() {
     pthread_detach(keep_alive_thread);
 
     // Open listen_for_messages thread for each client (Unicast)
-    for(int i = 0; i < client_count; i++){
-        pthread_t listen_for_messages_thread;
-        pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&clients[i].socket);
-        pthread_detach(listen_for_messages_thread);
-    }
+    // for(int i = 0; i < client_count; i++){
+    //     pthread_t listen_for_messages_thread;
+    //     pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&clients[i].socket);
+    //     pthread_detach(listen_for_messages_thread);
+    // }
 
     pthread_t send_questions_thread;
     pthread_create(&send_questions_thread, NULL, send_questions, (void*)&multicast_info); // Multicast questions

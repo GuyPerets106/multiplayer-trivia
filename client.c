@@ -313,6 +313,10 @@ void* handle_message(void* args) {
             break;
         case AUTH_SUCCESS:
             printf("Authentication Successful\n");
+            printf("Choose your game name: ");
+            char username[1024];
+            scanf("%s", username);
+            send_message(client_socket, AUTH_SUCCESS, username);
             printf("Waiting for the game to start...\n");
             break;
         case MAX_TRIES:
