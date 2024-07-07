@@ -450,6 +450,7 @@ void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
 }
 
 void* send_questions(void* args){
+    int num_questions = NUM_OF_QUESTIONS;
     while(1) {
         if (client_count == 0){
             break;
@@ -473,7 +474,6 @@ void* send_questions(void* args){
         }
         curr_question_index++;
     }
-    fclose(file);
     return NULL;
 }
 
