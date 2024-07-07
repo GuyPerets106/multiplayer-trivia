@@ -312,6 +312,7 @@ void* handle_message(void* args) {
                 }
                 else{
                     username[0] = '\0';
+                    printf("No game name entered, using your IP address...\n");
                     break;
                 }
             }
