@@ -96,6 +96,7 @@ void receive_multicast(int sock) {
 
 void answer_question() {
     fflush(stdin);
+    fflush(stdout);
     printf("Enter your answer: ");
     scanf("%s", curr_answer);
     fflush(stdin);
@@ -306,9 +307,10 @@ void* handle_message(void* args) {
                     perror("select");
                     exit(1);
                 }
-                else if(FD_ISSET(0, &readfds)){
+                else if(ret){
                     fgets(username, sizeof(username), stdin);
                     username[strcspn(username, "\n")] = 0;  // Remove newline character
+                    break;
                 }
                 else{
                     username[0] = '\0';
@@ -316,8 +318,6 @@ void* handle_message(void* args) {
                     break;
                 }
             }
-            fflush(stdin);
-            fflush(stdout);
             send_message(client_socket, AUTH_SUCCESS, username);
             printf("Waiting for the game to start...\n");
             break;
