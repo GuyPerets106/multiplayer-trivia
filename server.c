@@ -24,7 +24,7 @@
 #define QUESTION_TIMEOUT 10
 #define KEEP_ALIVE_TIMEOUT 15
 #define SCOREBOARD_BREAK 5
-#define NUM_OF_QUESTIONS 100
+#define NUM_OF_QUESTIONS 40
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"

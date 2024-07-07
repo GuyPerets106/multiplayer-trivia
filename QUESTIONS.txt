@@ -208,3 +208,63 @@ B. 192.168.1.1
 C. 172.16.0.1
 D. All of the above
 D
+Which command is used to configure a hostname on a Cisco router?
+A. hostname
+B. set hostname
+C. config hostname
+D. router-name
+A
+What is the primary function of the DNS protocol?
+A. To translate IP addresses to MAC addresses
+B. To translate domain names to IP addresses
+C. To route packets between networks
+D. To provide secure data transmission
+B
+Which type of address is used by a switch to make forwarding decisions?
+A. IP address
+B. MAC address
+C. Port address
+D. Subnet address
+B
+What is the range of well-known ports?
+A. 0-1023
+B. 1024-49151
+C. 49152-65535
+D. 0-65535
+A
+Which protocol is used to synchronize time across devices on a network?
+A. NTP
+B. SNMP
+C. SMTP
+D. TFTP
+A
+What is the default subnet mask for a Class B network?
+A. 255.0.0.0
+B. 255.255.0.0
+C. 255.255.255.0
+D. 255.255.255.255
+B
+Which routing protocol uses the Dijkstra algorithm?
+A. RIP
+B. OSPF
+C. EIGRP
+D. BGP
+B
+What does the acronym PPP stand for?
+A. Point-to-Point Protocol
+B. Packet-to-Packet Protocol
+C. Protocol Point Path
+D. Primary Packet Protocol
+A
+Which command is used to save the running configuration to the startup configuration on a Cisco device?
+A. copy running-config startup-config
+B. save running-config startup-config
+C. write memory
+D. backup config
+A
+Which of the following protocols is used for email transmission?
+A. POP3
+B. SMTP
+C. IMAP
+D. FTP
+B
