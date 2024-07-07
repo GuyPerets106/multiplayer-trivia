@@ -233,8 +233,13 @@ void* handle_client_msg(void* arg){
             pthread_mutex_lock(&client_mutex);
             for (int i = 0; i < client_count; i++) {
                 if (clients[i].socket == sock) {
-                    if(strlen(msg->data) > 0) strcpy(clients[i].name, msg->data);
-                    else strcpy(clients[i].name, inet_ntoa(clients[i].address.sin_addr));
+                    printf("Client %s chose name %s\n", inet_ntoa(clients[i].address.sin_addr), msg->data);
+                    if(strlen(msg->data) > 0) {
+                        strcpy(clients[i].name, msg->data);
+                    }
+                    else {
+                        strcpy(clients[i].name, inet_ntoa(clients[i].address.sin_addr));
+                    }
                     break;
                 }
             }
@@ -504,6 +509,7 @@ void* monitor_clients(void* args){
     pthread_t questions_thread = *(pthread_t*)args;
     while(1){
         if (client_count == 0 || game_over_flag){
+            printf("No more clients connected. Ending game...\n");
             pthread_cancel(questions_thread);
             break;
         }

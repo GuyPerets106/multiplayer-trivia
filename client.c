@@ -290,8 +290,8 @@ void* handle_message(void* args) {
             printf("Authentication Successful\n");
             printf("Choose your game name:\n");
             char username[1024];
+            fd_set readfds;
             while(1){
-                fd_set readfds;
                 struct timeval tv;
                 tv.tv_sec = 5;
                 tv.tv_usec = 0;
@@ -315,6 +315,7 @@ void* handle_message(void* args) {
                     break;
                 }
             }
+            FD_CLR(0, &readfds);
             send_message(client_socket, AUTH_SUCCESS, username);
             printf("Waiting for the game to start...\n");
             break;
