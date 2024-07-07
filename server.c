@@ -313,7 +313,6 @@ void* authenticate_client(void* arg) {
             return NULL;
         }
 
-        printf("Received authentication code: %s\n", auth_buffer);
         if (strcmp(auth_buffer, auth_code) != 0) {
             send_message(socket, AUTH_FAIL, AUTH_FAIL_MSG);
             wrong_auth_counter++;
