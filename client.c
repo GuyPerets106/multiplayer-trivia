@@ -77,7 +77,7 @@ void send_authentication_code(int sock){
     char auth_buffer[1024];
     memset(auth_buffer, 0, sizeof(auth_buffer));
     printf("Enter the authentication code: ");
-    scanf("%s", auth_buffer);
+    scanf(" %s", auth_buffer);
     send(sock, auth_buffer, strlen(auth_buffer), 0);
 }
 
@@ -98,7 +98,7 @@ void answer_question() {
     fflush(stdin);
     fflush(stdout);
     printf("Enter your answer: ");
-    scanf("%s", curr_answer);
+    scanf(" %s", curr_answer);
     fflush(stdin);
 }
 
@@ -115,9 +115,9 @@ int establish_connection(){
     while((sock = socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
         if (!address_ok) {
             printf("Enter the IP address of the server: ");
-            scanf("%s", server_ip);
+            scanf(" %s", server_ip);
             printf("Enter the port number of the server: ");
-            scanf("%d", &server_port);
+            scanf(" %d", &server_port);
         }
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_port = htons(server_port);
@@ -306,7 +306,7 @@ void* handle_message(void* args) {
                     exit(1);
                 }
                 else if(ret){
-                    scanf("%s", username);
+                    scanf(" %s", username);
                     break;
                 }
                 else{
