@@ -316,6 +316,8 @@ void* handle_message(void* args) {
                     break;
                 }
             }
+            fflush(stdin);
+            fflush(stdout);
             send_message(client_socket, AUTH_SUCCESS, username);
             printf("Waiting for the game to start...\n");
             break;
