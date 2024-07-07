@@ -570,8 +570,7 @@ int main() {
     send_multicast_message(multicast_sock, multicast_addr, GAME_STARTED, "Game Over");
     
     printf("Game Over\n");
-    while(1); 
-    // Kill the thread
+    // Kill the threads
     pthread_cancel(keep_alive_thread);
     pthread_cancel(deny_connections_thread);
     close(server_fd);
