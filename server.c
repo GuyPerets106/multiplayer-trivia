@@ -463,7 +463,6 @@ void* send_questions(void* args){
         printf("\n%s\n", curr_question);
         // Send the questions through multicast
         curr_question_start_time = time(NULL);
-        printf("SEND QUESTION\n");
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
         sleep(QUESTION_TIMEOUT);
         send_scoreboard(multicast_sock, multicast_addr);
