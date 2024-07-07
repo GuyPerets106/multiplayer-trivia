@@ -95,6 +95,7 @@ void receive_multicast(int sock) {
 }
 
 void answer_question() {
+    fflush(stdin);
     printf("Enter your answer: ");
     scanf("%s", curr_answer);
     fflush(stdin);

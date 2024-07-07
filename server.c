@@ -85,6 +85,7 @@ QA questions[NUM_OF_QUESTIONS];
 char curr_question[1024];
 int curr_question_index = 0;
 time_t curr_question_start_time;
+int game_over_flag = 0;
 
 void print_participants() {
     printf("Participants:\n");
@@ -461,6 +462,7 @@ void* send_questions(void* args){
         sleep(SCOREBOARD_BREAK);
         num_questions--;
         if (num_questions == 0){
+            game_over_flag = 1;
             break;
         }
         curr_question_index++;
@@ -494,6 +496,18 @@ void handle_client_answer(int client_sock, char* client_answer) {
         }
     }
     pthread_mutex_unlock(&client_mutex);
+}
+
+void* monitor_clients(void* args){
+    pthread_t questions_thread = *(pthread_t*)args;
+    while(1){
+        if (client_count == 0 || game_over_flag){
+            pthread_cancel(questions_thread);
+            break;
+        }
+        sleep(1);
+    }
+    return NULL;
 }
 
 int main() {
@@ -582,8 +596,11 @@ int main() {
 
     pthread_t send_questions_thread;
     pthread_create(&send_questions_thread, NULL, send_questions, (void*)&multicast_info); // Multicast questions
-    pthread_join(send_questions_thread, NULL);
+    pthread_detach(send_questions_thread);
 
+    pthread_t monitor_clients_thread;
+    pthread_create(&monitor_clients_thread, NULL, monitor_clients, (void*)&send_questions_thread); // Multicast keep alive messages
+    pthread_join(monitor_clients_thread, NULL);
     // Multicast Game-Over message
     send_multicast_message(multicast_sock, multicast_addr, GAME_STARTED, "Game Over");
     
