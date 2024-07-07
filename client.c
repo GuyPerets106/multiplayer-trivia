@@ -96,32 +96,7 @@ void receive_multicast(int sock) {
 
 void answer_question() {
     printf("Enter your answer: ");
-    while(1){
-        fd_set set;
-        struct timeval timeout;
-
-        // Initialize the file descriptor set
-        FD_ZERO(&set);
-        FD_SET(STDIN_FILENO, &set);
-
-        // Initialize the timeout data structure
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 500000; // 500ms
-
-        // Check if there's input on stdin
-        int rv = select(STDIN_FILENO + 1, &set, NULL, NULL, &timeout);
-        if (rv == -1) {
-            perror("select"); // Error occurred in select()
-        } else if (rv == 0) {
-            continue;
-        } else {
-            // Data is available, perform non-blocking read
-            if (FD_ISSET(STDIN_FILENO, &set)) {
-                scanf("%s", curr_answer);
-                break;
-            }
-        }
-    }
+    scanf("%s", curr_answer);
     fflush(stdin);
 }
 
@@ -171,6 +146,7 @@ int establish_connection(){
             return sock;
         }
     }
+    return -1;
 }
 
 
@@ -346,7 +322,6 @@ void* handle_message(void* args) {
             printf("%s", msg.data);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             answer_question();
-            printf("My Answer: %s\n", curr_answer);
             send_message(client_socket, ANSWER, curr_answer);
             break;
         case ANSWER: // ! Receive Unicast When Timeout

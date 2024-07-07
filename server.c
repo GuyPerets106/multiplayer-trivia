@@ -348,6 +348,7 @@ void* distribute_multicast_address(void* arg){ // Using unicast messages
         send_message(clients[i].socket, GAME_STARTING, multicast_address);
     }
     sleep(1);
+    return NULL;
 }
 
 void* wait_for_connections(void* arg){
@@ -401,11 +402,7 @@ void* wait_for_connections(void* arg){
 
             // Create a new thread to handle the connection
             pthread_t thread_id;
-            if (pthread_create(&thread_id, NULL, authenticate_client, (void*)&client_info) != 0) {
-                perror("pthread_create");
-                close(client_socket);
-                continue;
-            }
+            pthread_create(&thread_id, NULL, authenticate_client, (void*)&client_info);
             pthread_detach(thread_id);
             FD_CLR(server_fd, &read_fds);
         }
