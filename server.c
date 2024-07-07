@@ -99,13 +99,29 @@ void create_shuffled_questions(FILE* file){
         for(int j = 0; j < 5; j++){
             char line[1024];
             if (fgets(line, sizeof(line), file) == NULL) {
-                perror("Error reading file");
+                if (feof(file)) {
+                    printf("Unexpected end of file\n");
+                    fclose(file);
+                    exit(EXIT_FAILURE);
+                } else if (ferror(file)) {
+                    perror("Error reading file");
+                    fclose(file);
+                    exit(EXIT_FAILURE);
+                }
             }
             strcat(questions[i].question, line);
         }
         char line[1024];
         if (fgets(line, sizeof(line), file) == NULL) {
-            perror("Error reading file");
+            if (feof(file)) {
+                    printf("Unexpected end of file\n");
+                    fclose(file);
+                    exit(EXIT_FAILURE);
+                } else if (ferror(file)) {
+                    perror("Error reading file");
+                    fclose(file);
+                    exit(EXIT_FAILURE);
+                }
         }
         strcpy(questions[i].answer, line);
     }
@@ -505,6 +521,9 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    FILE* questions_file = fopen(FILENAME, "r");
+    create_shuffled_questions(questions_file);
+    fclose(questions_file);
     printf("Server started with authentication code %s. Waiting for connections...\n", auth_code);
 
     // Start Connection Phase - Wait For Connections Thread
@@ -532,9 +551,6 @@ int main() {
     multicast_addr.sin_port = htons(MULTICAST_PORT);
 
     printf("Game Starting...\n");
-    FILE* questions_file = fopen(FILENAME, "r");
-    create_shuffled_questions(questions_file);
-    fclose(questions_file);
     pthread_t game_starting_thread;
     pthread_create(&game_starting_thread, NULL, distribute_multicast_address, NULL);
     pthread_join(game_starting_thread, NULL);
