@@ -281,6 +281,7 @@ void* handle_message(void* args) {
     MessageThreadArgs thread_args = *(MessageThreadArgs*)args;
     Message msg = thread_args.msg;
     int client_socket = thread_args.socket;
+    char curr_question[2048];
     switch (msg.type) {
         case AUTH_FAIL:
             printf("Authentication Failed: '%s'\n", msg.data);
@@ -343,8 +344,8 @@ void* handle_message(void* args) {
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         case QUESTION: // Receive Multicast
-            fflush(stdout);
-            printf("\n%s", msg.data);
+            strcpy(curr_question, msg.data);
+            printf("%s", curr_question);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             answer_question();
             send_message(client_socket, ANSWER, curr_answer);

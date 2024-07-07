@@ -450,8 +450,6 @@ void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
 }
 
 void* send_questions(void* args){
-    FILE* file = fopen(FILENAME, "r");
-    int num_questions = 10;
     while(1) {
         if (client_count == 0){
             break;
@@ -459,6 +457,7 @@ void* send_questions(void* args){
         SocketInfo* info = (SocketInfo*)args;
         int multicast_sock = info->socket_fd;
         struct sockaddr_in multicast_addr = info->address;
+        curr_question[0] = '\0'; // Clear the current question
         strcpy(curr_question, questions[curr_question_index].question); 
         printf("\n%s\n", curr_question);
         // Send the questions through multicast
