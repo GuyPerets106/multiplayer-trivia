@@ -284,7 +284,7 @@ void* handle_message(void* args) {
             break;
         case AUTH_SUCCESS:
             printf("Authentication Successful\n");
-            printf("Choose your game name:\n");
+            printf("Choose your game name: ");
             char username[1024];
             fd_set readfds;
             while(name_flag){
@@ -307,7 +307,7 @@ void* handle_message(void* args) {
                 }
                 else{
                     username[0] = '\0';
-                    printf("No game name entered, using your IP address...\n");
+                    printf("\nNo game name entered, using your IP address...\n");
                     name_flag = 0;
                 }
             }
