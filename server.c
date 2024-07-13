@@ -140,10 +140,10 @@ void create_shuffled_questions(FILE* file){
         questions[random_index] = temp;
     }
     // Print the shuffled questions
-    for (int i = 0; i < NUM_OF_QUESTIONS; i++){
-        printf("Question %d: %s", i + 1, questions[i].question);
-        printf("Answer %d: %s", i + 1, questions[i].answer);
-    }
+    // for (int i = 0; i < NUM_OF_QUESTIONS; i++){
+    //     printf("Question %d: %s", i + 1, questions[i].question);
+    //     printf("Answer %d: %s", i + 1, questions[i].answer);
+    // }
 }
 
 void send_message(int sock, int msg_type, const char *msg_data) {
@@ -525,7 +525,6 @@ int main() {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     pthread_t thread_id;
-    printf("GOT HERE1\n");
     generate_random_code();
 
     // Create TCP socket
@@ -556,7 +555,6 @@ int main() {
 
     FILE* questions_file = fopen(FILENAME, "r");
     create_shuffled_questions(questions_file);
-    printf("GOT HERE2\n");
 
     fclose(questions_file);
     struct ifaddrs *ifaddr, *ifa;
