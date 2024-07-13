@@ -29,6 +29,7 @@
 #define KEEP_ALIVE_TIMEOUT 15
 #define SCOREBOARD_BREAK 5
 #define NUM_OF_QUESTIONS 45
+#define QUESTION_TIMEOUT_BREAK 1
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
 #define AUTH_FAIL_MSG "Invalid authentication code"
@@ -466,6 +467,7 @@ void* send_questions(void* args){
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
         sleep(QUESTION_TIMEOUT);
         send_multicast_message(multicast_sock, multicast_addr, ANSWER, "Time is up");
+        sleep(QUESTION_TIMEOUT_BREAK);
         send_scoreboard(multicast_sock, multicast_addr);
         sleep(SCOREBOARD_BREAK);
         num_questions--;
