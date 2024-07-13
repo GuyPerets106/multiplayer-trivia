@@ -322,9 +322,8 @@ void* handle_message(void* args) {
             send_authentication_code(client_socket);
             break;
         case GAME_STARTED:
-            printf("%s. Go fuck yourself...\n\n", msg.data);
+            printf("%s. Go fuck yourself...\n", msg.data);
             close(client_socket);
-            fflush(stdin);
             client_socket = establish_connection(); // BLOCKING
             send_authentication_code(client_socket);
             break;
