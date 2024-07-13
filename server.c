@@ -140,10 +140,10 @@ void create_shuffled_questions(FILE* file){
         questions[random_index] = temp;
     }
     // Print the shuffled questions
-    // for (int i = 0; i < NUM_OF_QUESTIONS; i++){
-    //     printf("Question %d: %s", i + 1, questions[i].question);
-    //     printf("Answer %d: %s", i + 1, questions[i].answer);
-    // }
+    for (int i = 0; i < NUM_OF_QUESTIONS; i++){
+        printf("Question %d: %s", i + 1, questions[i].question);
+        printf("Answer %d: %s", i + 1, questions[i].answer);
+    }
 }
 
 void send_message(int sock, int msg_type, const char *msg_data) {
