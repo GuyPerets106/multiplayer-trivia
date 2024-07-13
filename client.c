@@ -306,7 +306,7 @@ void* handle_message(void* args) {
                     name_flag = 0;
                 }
                 else{
-                    username[0] = '\0';
+                    memset(username, 0, sizeof(username));
                     printf("No game name entered, using your IP address...\n");
                     name_flag = 0;
                 }
@@ -346,7 +346,7 @@ void* handle_message(void* args) {
             break;
         case ANSWER: // ! Receive Unicast When Timeout
             pthread_cancel(curr_question_thread);
-            printf("Got timeout for answer\n");
+            printf("Question timout reached\n");
             break;
         case SCOREBOARD:
             printf("%s", msg.data);

@@ -257,7 +257,7 @@ void* handle_client_msg(void* arg){
     return NULL;
 }
 
-void* listen_for_messages(void* args){
+void* listen_for_messages(void* args){ 
     // Every Unicast message coming for a specific client 
     // will be handled in another thread
     int sock = *(int*)args;
@@ -465,6 +465,7 @@ void* send_questions(void* args){
         curr_question_start_time = time(NULL);
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
         sleep(QUESTION_TIMEOUT);
+        send_multicast_message(multicast_sock, multicast_addr, ANSWER, "Time is up");
         send_scoreboard(multicast_sock, multicast_addr);
         sleep(SCOREBOARD_BREAK);
         num_questions--;
