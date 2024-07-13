@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <signal.h>
 
 
 #define AUTH_SUCCESS_MSG "Authentication successful"
