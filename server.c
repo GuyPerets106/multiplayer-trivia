@@ -458,9 +458,9 @@ void* send_questions(void* args){
         SocketInfo* info = (SocketInfo*)args;
         int multicast_sock = info->socket_fd;
         struct sockaddr_in multicast_addr = info->address;
-        curr_question[0] = '\0'; // Clear the current question
+        memset(curr_question, 0, sizeof(curr_question));
         strcpy(curr_question, questions[curr_question_index].question); 
-        printf("\n%s\n", curr_question);
+        printf("\n%s\n", curr_question); // ! REMOVE?
         // Send the questions through multicast
         curr_question_start_time = time(NULL);
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
