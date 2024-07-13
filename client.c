@@ -156,14 +156,14 @@ int establish_connection(){
 void* handle_unicast(void* args){ // Handles first connections with the server and authentication
     int bytes_receive_unicast;
     Message msg_unicast;
-    int sock = *(int*)args;
+    int* sock = (int*)args;
     while(1){ // Unicast
         memset(msg_unicast.data, 0, sizeof(msg_unicast.data));
-        bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
+        bytes_receive_unicast = recv(*sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
         if (bytes_receive_unicast > 0) {
             pthread_t handle_unicast_msg;
             MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
-            thread_args->socket = sock;
+            thread_args->socket = *sock;
             thread_args->msg = msg_unicast;
             // printf("Message received: %s\n", msg_unicast.data);
             pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
@@ -172,8 +172,8 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
         }
         else if (bytes_receive_unicast == 0) { // Socket closed
             printf("Server disconnected\n");
-            sock = establish_connection();
-            send_authentication_code(sock);
+            *sock = establish_connection();
+            send_authentication_code(*sock);
             continue;
         }
         else if (errno == EWOULDBLOCK || errno == EAGAIN) {
@@ -186,6 +186,7 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
             break;
         }
     }
+    free(args);
     return NULL;
 }
 
@@ -381,11 +382,12 @@ void* handle_message(void* args) {
 }
 
 int main() {
-    int sock = establish_connection(); // DONE When IP and Port are correct
-    send_authentication_code(sock);
+    int* sock = malloc(sizeof(int));
+    *sock = establish_connection(); // DONE When IP and Port are correct
+    send_authentication_code(*sock);
     
     pthread_t handle_unicast_thread;
-    pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
+    pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)sock);
     pthread_detach(handle_unicast_thread);
     while(1);
     printf("Exiting...\n");
