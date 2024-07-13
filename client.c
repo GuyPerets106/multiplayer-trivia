@@ -315,9 +315,8 @@ void* handle_message(void* args) {
             printf("Waiting for the game to start...\n");
             break;
         case MAX_TRIES:
-            printf("Maximum number of tries exceeded, disconnecting...\n\n");
+            printf("Maximum number of tries exceeded, disconnecting...\n");
             close(client_socket);
-            fflush(stdin);
             client_socket = establish_connection(); // BLOCKING
             send_authentication_code(client_socket);
             break;
@@ -344,7 +343,7 @@ void* handle_message(void* args) {
             memset(curr_answer, 0, sizeof(curr_answer));
             break;
         case ANSWER: // ! Receive Unicast When Timeout
-            pthread_cancel(curr_question_thread);
+            pthread_kill(curr_question_thread, SIGINT);
             printf("Question timout reached\n");
             break;
         case SCOREBOARD:
