@@ -34,8 +34,6 @@
 #define INVALID 10
 
 int game_started = 0;
-pthread_cond_t cond;
-
 
 void* handle_message(void* args);
 
@@ -61,6 +59,8 @@ typedef struct {
     int port;
 } MulticastAddress;
 
+pthread_mutex_t lock_answer;
+pthread_mutex_t lock_question;
 pthread_t curr_question_thread;
 char curr_answer[1024];
 
@@ -96,8 +96,10 @@ void receive_multicast(int sock) {
 }
 
 void answer_question() {
+    pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
     scanf("%s", curr_answer);
+    pthread_mutex_unlock(&lock_answer);
 }
 
 int establish_connection(){
@@ -338,13 +340,15 @@ void* handle_message(void* args) {
             break;
         case QUESTION: // Receive Multicast
             printf("%s", msg.data);
+            pthread_mutex_lock(&lock_question);
             curr_question_thread = pthread_self(); // ! Consider Mutex
+            pthread_mutex_unlock(&lock_question);
             answer_question();
             send_message(client_socket, ANSWER, curr_answer);
             memset(curr_answer, 0, sizeof(curr_answer));
             break;
         case ANSWER: // ! Receive Unicast When Timeout
-            pthread_kill(curr_question_thread, SIGINT);
+            pthread_cancel(curr_question_thread);
             printf("Question timout reached\n");
             break;
         case SCOREBOARD:
@@ -370,7 +374,8 @@ void* handle_message(void* args) {
 }
 
 int main() {
-    pthread_cond_init(&cond, NULL);
+    pthread_mutex_init(&lock_answer, NULL);
+    pthread_mutex_init(&lock_question, NULL);
     int sock = establish_connection(); // DONE When IP and Port are correct
     send_authentication_code(sock);
     
