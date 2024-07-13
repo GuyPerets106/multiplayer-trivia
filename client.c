@@ -110,6 +110,7 @@ int establish_connection(){
     int address_ok = 0;
 
     while((sock = socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
+        fflush(stdin);
         if (!address_ok) {
             printf("Enter the IP address of the server: ");
             scanf(" %s", server_ip);
@@ -121,12 +122,10 @@ int establish_connection(){
         if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
             printf("\n**Invalid address**\n");
             close(sock);
-            fflush(stdin);
             continue;
         }
         else {
             address_ok = 1;
-            fflush(stdin);
         }
 
         if(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
@@ -168,7 +167,6 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
         }
         else if (bytes_receive_unicast == 0) { // Socket closed
             printf("Server disconnected\n");
-            fflush(stdin);
             sock = establish_connection();
             send_authentication_code(sock);
             continue;
