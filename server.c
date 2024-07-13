@@ -19,7 +19,7 @@
 
 
 #define PORT 8080
-#define INTERFACE_NAME "eno1"
+#define INTERFACE_NAME "ens160"
 #define MULTICAST_IP "228.6.73.122"
 #define MULTICAST_PORT 12345
 #define MAX_CLIENTS 100
@@ -522,6 +522,7 @@ int main() {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     pthread_t thread_id;
+    printf("GOT HERE1\n");
     generate_random_code();
 
     // Create TCP socket
@@ -552,6 +553,8 @@ int main() {
 
     FILE* questions_file = fopen(FILENAME, "r");
     create_shuffled_questions(questions_file);
+    printf("GOT HERE2\n");
+
     fclose(questions_file);
     struct ifaddrs *ifaddr, *ifa;
     char ip[INET_ADDRSTRLEN];

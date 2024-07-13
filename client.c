@@ -383,20 +383,6 @@ int main() {
     pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
     pthread_detach(handle_unicast_thread);
     while(1);
-    
-    // fflush(stdin);
-    // send(sock, hello_msg, strlen(hello_msg), 0);
-    // printf("Ready message sent\n");
-
-    // pthread_t multicast_thread;
-    // //pthread_create(&multicast_thread, NULL, (void *)receive_multicast, NULL);
-
-    // while (1) {
-    //     printf("Enter your answer: ");
-    //     fgets(buffer, sizeof(buffer), stdin);
-    //     buffer[strcspn(buffer, "\n")] = 0;  // Remove newline character
-    //     send(sock, buffer, strlen(buffer), 0);
-    // }
-    printf("Exiting...\n");
+    printf("Exiting...\n");å
     return 0;
 }
