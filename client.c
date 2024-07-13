@@ -59,8 +59,8 @@ typedef struct {
     int port;
 } MulticastAddress;
 
-pthread_mutex_t lock_answer;
-pthread_mutex_t lock_question;
+pthread_mutex_t lock_answer = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_question = PTHREAD_MUTEX_INITIALIZER;
 pthread_t curr_question_thread;
 char curr_answer[1024];
 
@@ -348,7 +348,9 @@ void* handle_message(void* args) {
             memset(curr_answer, 0, sizeof(curr_answer));
             break;
         case ANSWER: // ! Receive Unicast When Timeout
+            pthread_mutex_lock(&lock_question);
             pthread_cancel(curr_question_thread);
+            pthread_mutex_unlock(&lock_question);
             printf("Question timout reached\n");
             break;
         case SCOREBOARD:
@@ -374,8 +376,8 @@ void* handle_message(void* args) {
 }
 
 int main() {
-    pthread_mutex_init(&lock_answer, NULL);
-    pthread_mutex_init(&lock_question, NULL);
+    setbuf(stdout, NULL);
+    setbuf(stdin, NULL);
     int sock = establish_connection(); // DONE When IP and Port are correct
     send_authentication_code(sock);
     
