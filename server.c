@@ -568,8 +568,10 @@ int main() {
             continue;
 
         if (ifa->ifa_addr->sa_family == AF_INET) {
-            struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
-            inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
+            if (strcmp(ifa->ifa_name, INTERFACE_NAME) == 0) {
+                struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
+                inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
+            }
         }
     }
     printf("Connect to server with IP: %s and port: %d\n", ip, ntohs(address.sin_port));
