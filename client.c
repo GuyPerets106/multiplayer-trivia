@@ -383,6 +383,6 @@ int main() {
     pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
     pthread_detach(handle_unicast_thread);
     while(1);
-    printf("Exiting...\n");å
+    printf("Exiting...\n");
     return 0;
 }
