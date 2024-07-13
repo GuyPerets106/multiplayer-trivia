@@ -162,11 +162,11 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
         bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
         if (bytes_receive_unicast > 0) {
             pthread_t handle_unicast_msg;
-            MessageThreadArgs thread_args;
-            thread_args.socket = sock;
-            thread_args.msg = msg_unicast;
+            MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
+            thread_args->socket = sock;
+            thread_args->msg = msg_unicast;
             // printf("Message received: %s\n", msg_unicast.data);
-            pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)&thread_args);
+            pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
             pthread_join(handle_unicast_msg, NULL);
             continue; // ! REMOVE ALL CONTINUES WHEN MULTICAST IS IMPLEMENTED
         }
@@ -192,21 +192,20 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
 void* handle_multicast(void* args){
     int bytes_receive_multicast;
     Message msg_multicast;
-    MulticastThreadArgs thread_args = *(MulticastThreadArgs*)args;
-    int multicast_sock = thread_args.multicast_socket;
-    int unicast_sock = thread_args.unicast_socket;
-    struct sockaddr* addr = thread_args.addr;
+    MulticastThreadArgs* thread_args = (MulticastThreadArgs*)args;
+    int multicast_sock = thread_args->multicast_socket;
+    int unicast_sock = thread_args->unicast_socket;
+    struct sockaddr* addr = thread_args->addr;
     socklen_t addrlen = sizeof(*addr);
     while(game_started){
         memset(msg_multicast.data, 0, sizeof(msg_multicast.data));
         bytes_receive_multicast = recvfrom(multicast_sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
         if (bytes_receive_multicast > 0) {
             pthread_t handle_multicast_msg;
-            MessageThreadArgs thread_args;
-            thread_args.socket = unicast_sock;
-            thread_args.msg = msg_multicast;
-            pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)&thread_args);
-            printf("\n");
+            MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
+            thread_args->socket = unicast_sock;
+            thread_args->msg = msg_multicast;
+            pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)thread_args);
             pthread_detach(handle_multicast_msg);
             continue;
         }
@@ -224,6 +223,7 @@ void* handle_multicast(void* args){
             break;
         }
     }
+    free(args);
     return NULL;
 }
 
@@ -268,19 +268,19 @@ void open_multicast_socket(int unicast_sock, char* msg){
         exit(1);
     }
     printf("Listening to multicast address %s:%d\n", multicast_address.ip, multicast_address.port);
-    MulticastThreadArgs args;
-    args.multicast_socket = sock;
-    args.unicast_socket = unicast_sock;
-    args.addr = (struct sockaddr*)&addr;
+    MulticastThreadArgs* args = malloc(sizeof(MulticastThreadArgs));
+    args->multicast_socket = sock;
+    args->unicast_socket = unicast_sock;
+    args->addr = (struct sockaddr*)&addr;
     pthread_t handle_multicast_thread;
-    pthread_create(&handle_multicast_thread, NULL, handle_multicast, (void*)&args);
+    pthread_create(&handle_multicast_thread, NULL, handle_multicast, (void*)args);
     pthread_detach(handle_multicast_thread);
 }
 
 void* handle_message(void* args) {
-    MessageThreadArgs thread_args = *(MessageThreadArgs*)args;
-    Message msg = thread_args.msg;
-    int client_socket = thread_args.socket;
+    MessageThreadArgs* thread_args = (MessageThreadArgs*)args;
+    Message msg = thread_args->msg;
+    int client_socket = thread_args->socket;
     int name_flag = 1;
     switch (msg.type) {
         case AUTH_FAIL:
@@ -376,6 +376,7 @@ void* handle_message(void* args) {
             printf("Unknown message type: %d\n", msg.type);
             break;
     }
+    free(args);
     return NULL;
 }
 
