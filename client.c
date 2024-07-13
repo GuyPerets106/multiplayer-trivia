@@ -346,11 +346,9 @@ void* handle_message(void* args) {
             break;
         case ANSWER: // ! Receive Unicast When Timeout
             pthread_cancel(curr_question_thread);
-            fflush(stdin);
             printf("Got timeout for answer\n");
             break;
         case SCOREBOARD:
-            printf("Got Scoreboard\n");
             printf("%s", msg.data);
             break;
         case GAME_OVER:
