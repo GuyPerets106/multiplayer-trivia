@@ -65,6 +65,7 @@ pthread_t curr_question_thread;
 char curr_answer[1024];
 
 void send_message(int sock, int msg_type, const char *msg_data) {
+    pthread_mutex_lock(&lock_answer);
     Message msg;
     msg.type = msg_type;
     strncpy(msg.data, msg_data, sizeof(msg.data) - 1);
@@ -72,6 +73,7 @@ void send_message(int sock, int msg_type, const char *msg_data) {
 
     // Send the message
     send(sock, &msg, sizeof(msg), 0);
+    pthread_mutex_unlock(&lock_answer);
 }
 
 void send_authentication_code(int sock){
@@ -364,8 +366,10 @@ void* handle_message(void* args) {
             break;
         case INVALID:
             printf("Invalid Answer\n");
+            pthread_mutex_lock(&lock_question);
             curr_question_thread = pthread_self(); // ! Consider Mutex
-            answer_question();
+            pthread_mutex_unlock(&lock_question);
+            answer_question();            
             send_message(client_socket, ANSWER, curr_answer);
             break;
         default:
@@ -376,11 +380,8 @@ void* handle_message(void* args) {
 }
 
 int main() {
-    setbuf(stdout, NULL);
-    setbuf(stdin, NULL);
     int sock = establish_connection(); // DONE When IP and Port are correct
     send_authentication_code(sock);
-    
     
     pthread_t handle_unicast_thread;
     pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
