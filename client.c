@@ -121,7 +121,7 @@ void answer_question() {
             pthread_exit(NULL);
         } else if (retval) {
             if (FD_ISSET(STDIN_FILENO, &read_fds)) {
-                if (fgets(curr_answer, sizeof(buffer), stdin) != NULL) {
+                if (fgets(curr_answer, sizeof(curr_answer), stdin) != NULL) {
                     break;
                 } else {
                     perror("fgets()");
