@@ -96,7 +96,6 @@ void send_authentication_code(int sock){
 
 void answer_question() {
     printf("Enter your answer:\n");
-    fflush(stdin);
     pthread_mutex_lock(&lock_answer);
     // Use select on stdin
     fd_set readfds;
@@ -115,6 +114,7 @@ void answer_question() {
     }
     else{
         printf("Question Timeout Reached...\n");
+        fflush(stdin);
     }
     pthread_mutex_unlock(&lock_answer);
 }
