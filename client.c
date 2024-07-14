@@ -67,6 +67,7 @@ char curr_answer[1024];
 void send_message(int sock, int msg_type, const char *msg_data) {
     pthread_mutex_lock(&lock_answer);
     Message msg;
+    memset(msg.data, 0, sizeof(msg.data));
     msg.type = msg_type;
     strncpy(msg.data, msg_data, strlen(msg_data));
     msg.data[strlen(msg_data)] = '\0';  // Ensure null-termination
