@@ -226,17 +226,17 @@ void* send_keep_alive(void* arg) { // Multicast
 
 void* handle_client_msg(void* arg){
     ClientMsg* client_msg = (ClientMsg*)arg;
-    Message msg = client_msg->msg;
+    Message* msg = &client_msg->msg;
     int sock = client_msg->socket;
-    switch (msg.type)
+    switch (msg->type)
     {
         case AUTH_SUCCESS:
             pthread_mutex_lock(&client_mutex);
             for (int i = 0; i < client_count; i++) {
                 if (clients[i].socket == sock) {
-                    printf("Client %s chose name %s\n", inet_ntoa(clients[i].address.sin_addr), msg.data);
-                    if(strlen(msg.data) > 0) {
-                        strcpy(clients[i].name, msg.data);
+                    printf("Client %s chose name %s\n", inet_ntoa(clients[i].address.sin_addr), msg->data);
+                    if(strlen(msg->data) > 0) {
+                        strcpy(clients[i].name, msg->data);
                     }
                     else {
                         strcpy(clients[i].name, inet_ntoa(clients[i].address.sin_addr));
@@ -247,7 +247,7 @@ void* handle_client_msg(void* arg){
             pthread_mutex_unlock(&client_mutex);
             break;
         case ANSWER:
-            handle_client_answer(sock, msg.data);
+            handle_client_answer(sock, msg->data);
             break;
         case KEEP_ALIVE:
             handle_keep_alive(sock);
