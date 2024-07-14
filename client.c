@@ -87,17 +87,20 @@ void send_authentication_code(int sock){
 }
 
 void answer_question() {
+    print("ANSWERING QUESTION\n");
     pthread_mutex_lock(&lock_answer);
+    printf("Enter your answer: ");
     // Use select to check stdin for an answer
+    fd_set readfds;
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    int ret;
+    FD_ZERO(&readfds);
+    FD_SET(fileno(stdin), &readfds); // 0 is the file descriptor for stdin
     while(1){
-        fd_set readfds;
-        struct timeval tv;
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
-        int ret;
-        FD_ZERO(&readfds);
-        FD_SET(0, &readfds); // 0 is the file descriptor for stdin
-        ret = select(1, &readfds, NULL, NULL, &tv);
+        fd_set temp = readfds;
+        ret = select(1, &temp, NULL, NULL, &tv);
         if(ret == -1){
             perror("select");
             exit(1);
@@ -354,8 +357,6 @@ void* handle_message(void* args) {
             pthread_mutex_lock(&lock_question);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             pthread_mutex_unlock(&lock_question);
-            printf("Enter your answer: ");
-            sleep(1);
             answer_question(); // using select
             send_message(client_socket, ANSWER, curr_answer);
             break;
