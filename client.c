@@ -69,7 +69,7 @@ void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
     msg.type = msg_type;
     strncpy(msg.data, msg_data, strlen(msg_data));
-    msg.data[strlen(msg_data) - 1] = '\0';  // Ensure null-termination
+    msg.data[strlen(msg_data)] = '\0';  // Ensure null-termination
 
     // Send the message
     printf("Sending message %d: %s\n", msg.type, msg.data);
