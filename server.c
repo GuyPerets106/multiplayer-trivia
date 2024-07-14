@@ -226,7 +226,7 @@ void* send_keep_alive(void* arg) { // Multicast
 
 void* handle_client_msg(void* arg){
     ClientMsg* client_msg = (ClientMsg*)arg;
-    Message* msg = &client_msg->msg;
+    Message* msg = client_msg->msg;
     int sock = client_msg->socket;
     switch (msg->type)
     {
