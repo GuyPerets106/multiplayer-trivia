@@ -87,9 +87,8 @@ void send_authentication_code(int sock){
 }
 
 void answer_question() {
-    printf("ANSWERING QUESTION\n");
-    pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
+    pthread_mutex_lock(&lock_answer);
     // Use select to check stdin for an answer
     fd_set readfds;
     struct timeval tv;
