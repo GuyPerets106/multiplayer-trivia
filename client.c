@@ -334,7 +334,6 @@ void* handle_message(void* args) {
             curr_question_thread = pthread_self(); // ! Consider Mutex
             pthread_mutex_unlock(&lock_question);
             answer_question();
-            printf("Answering question: %s\n", curr_answer);
             send_message(client_socket, ANSWER, curr_answer);
             break;
         case ANSWER: // ! Receive Unicast When Timeout
