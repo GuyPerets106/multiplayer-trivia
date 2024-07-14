@@ -43,6 +43,7 @@ void handle_signal(int sig) {
     }
     // block stdin
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) & ~O_NONBLOCK);
+    fflush(stdin);
     return;
 }
 
@@ -98,7 +99,7 @@ void send_authentication_code(int sock){
 void answer_question() {
     fflush(stdin);
     pthread_mutex_lock(&lock_answer);
-    printf("Enter your answer: ");
+    printf("Enter your answer:\n");
     // non-block stdin
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
     while(1){
