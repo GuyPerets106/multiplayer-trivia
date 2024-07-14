@@ -87,7 +87,7 @@ void send_authentication_code(int sock){
 }
 
 void answer_question() {
-    print("ANSWERING QUESTION\n");
+    printf("ANSWERING QUESTION\n");
     pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
     // Use select to check stdin for an answer
