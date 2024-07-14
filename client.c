@@ -95,7 +95,6 @@ void send_authentication_code(int sock){
 }
 
 void answer_question() {
-    printf("Enter your answer: ");
     fflush(stdin);
     pthread_mutex_lock(&lock_answer);
     // Use select on stdin
@@ -358,6 +357,7 @@ void* handle_message(void* args) {
         case QUESTION: // Receive Multicast
             memset(curr_answer, 0, sizeof(curr_answer));
             printf("%s", msg.data);
+            printf("Enter your answer: ");
             pthread_mutex_lock(&lock_question);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             pthread_mutex_unlock(&lock_question);
