@@ -159,8 +159,8 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
         }
         else if (bytes_receive_unicast == 0) { // Socket closed
             printf("Server disconnected\n");
-            *sock = establish_connection();
-            send_authentication_code(*sock);
+            sock = establish_connection();
+            send_authentication_code(sock);
             continue;
         }
         else if (errno == EWOULDBLOCK || errno == EAGAIN) {
