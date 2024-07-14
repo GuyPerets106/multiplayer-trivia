@@ -95,9 +95,9 @@ void send_authentication_code(int sock){
 }
 
 void answer_question() {
+    printf("Enter your answer: ");
     fflush(stdin);
     pthread_mutex_lock(&lock_answer);
-    printf("Enter your answer: ");
     // Use select on stdin
     fd_set readfds;
     struct timeval tv;
