@@ -102,6 +102,7 @@ void answer_question() {
     while(1){
         fgets(curr_answer, sizeof(curr_answer), stdin);
         if (strlen(curr_answer) < 2) {
+            memset(curr_answer, 0, sizeof(curr_answer));
             continue;
         }
         else {
