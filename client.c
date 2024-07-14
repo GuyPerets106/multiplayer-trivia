@@ -40,7 +40,7 @@ void* handle_message(void* args);
 // Define the message structure
 typedef struct {
     int type;  // Message type
-    char data[1024];  // Message data
+    char data[2048];  // Message data
 } Message;
 
 typedef struct {

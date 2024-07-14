@@ -19,7 +19,7 @@
 
 
 #define PORT 8080
-#define INTERFACE_NAME "ens160"
+#define INTERFACE_NAME "eno1"
 #define MULTICAST_IP "228.6.73.122"
 #define MULTICAST_PORT 12345
 #define MAX_CLIENTS 100
