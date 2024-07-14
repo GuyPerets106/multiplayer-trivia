@@ -41,6 +41,7 @@ void handle_signal(int sig) {
     if (sig == SIGUSR1) {
         printf("Question timout reached\n");
     }
+    return;
 }
 
 // Define the message structure
