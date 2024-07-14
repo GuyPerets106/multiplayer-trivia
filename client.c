@@ -68,8 +68,8 @@ void send_message(int sock, int msg_type, const char *msg_data) {
     pthread_mutex_lock(&lock_answer);
     Message msg;
     msg.type = msg_type;
-    strncpy(msg.data, msg_data, sizeof(msg.data) - 1);
-    msg.data[sizeof(msg.data) - 1] = '\0';  // Ensure null-termination
+    strncpy(msg.data, msg_data, strlen(msg_data));
+    msg.data[strlen(msg_data) - 1] = '\0';  // Ensure null-termination
 
     // Send the message
     printf("Sending message %d: %s\n", msg.type, msg.data);

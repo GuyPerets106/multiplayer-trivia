@@ -293,6 +293,11 @@ void* listen_for_messages(void* args){
             close(sock);
             return NULL;
         }
+        // Check if a message is empty, if so - continue
+        if (msg.type == 0 && strlen(msg.data) == 0) {
+            printf("Empty message received\n");
+            continue;
+        }
         client_msg.msg = msg;
         client_msg.socket = sock;
         printf("Client sent message %d: %s\n", msg.type, msg.data);
