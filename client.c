@@ -69,7 +69,7 @@ void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
     msg.type = msg_type;
     strncpy(msg.data, msg_data, sizeof(msg.data) - 1);
-    msg.data[sizeof(msg.data) - 1] = '\0';  // Ensure null-termination
+    // msg.data[sizeof(msg.data) - 1] = '\0';  // Ensure null-termination
 
     // Send the message
     send(sock, &msg, sizeof(msg), 0);
@@ -82,19 +82,6 @@ void send_authentication_code(int sock){
     printf("Enter the authentication code: ");
     scanf("%s", auth_buffer);
     send(sock, auth_buffer, strlen(auth_buffer), 0);
-}
-
-void receive_multicast(int sock) {
-    char msgbuf[1024];
-    while (1) {
-        int nbytes = recvfrom(sock, msgbuf, sizeof(msgbuf), 0, NULL, NULL);
-        if (nbytes < 0) {
-            perror("recvfrom");
-            exit(1);
-        }
-        msgbuf[nbytes] = '\0';
-        printf("Received question: %s\n", msgbuf);
-    }
 }
 
 void answer_question() {
@@ -156,14 +143,14 @@ int establish_connection(){
 void* handle_unicast(void* args){ // Handles first connections with the server and authentication
     int bytes_receive_unicast;
     Message msg_unicast;
-    int* sock = (int*)args;
+    int sock = *(int*)args;
     while(1){ // Unicast
         memset(msg_unicast.data, 0, sizeof(msg_unicast.data));
-        bytes_receive_unicast = recv(*sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
+        bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
         if (bytes_receive_unicast > 0) {
             pthread_t handle_unicast_msg;
             MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
-            thread_args->socket = *sock;
+            thread_args->socket = sock;
             thread_args->msg = msg_unicast;
             // printf("Message received: %s\n", msg_unicast.data);
             pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
@@ -186,7 +173,6 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
             break;
         }
     }
-    free(args);
     return NULL;
 }
 
@@ -224,7 +210,7 @@ void* handle_multicast(void* args){
             break;
         }
     }
-    free(args);
+    free(thread_args);
     return NULL;
 }
 
@@ -377,17 +363,17 @@ void* handle_message(void* args) {
             printf("Unknown message type: %d\n", msg.type);
             break;
     }
-    free(args);
+    free(thread_args);
     return NULL;
 }
 
 int main() {
-    int* sock = malloc(sizeof(int));
-    *sock = establish_connection(); // DONE When IP and Port are correct
-    send_authentication_code(*sock);
+    int sock;
+    sock = establish_connection(); // DONE When IP and Port are correct
+    send_authentication_code(sock);
     
     pthread_t handle_unicast_thread;
-    pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)sock);
+    pthread_create(&handle_unicast_thread, NULL, handle_unicast, (void*)&sock);
     pthread_detach(handle_unicast_thread);
     while(1);
     printf("Exiting...\n");
