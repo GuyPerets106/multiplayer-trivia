@@ -268,6 +268,7 @@ void* listen_for_messages(void* args){
     ClientMsg client_msg;
     int bytes_receive_unicast =  0;
     while(1){
+        memset(&msg, 0, sizeof(msg));
         if (client_count == 0){
             break;
         }
