@@ -20,6 +20,7 @@
 #define MAX_TRIES_MSG "Maximum number of tries exceeded"
 #define GAME_STARTED_MSG "Game already started"
 #define KEEP_ALIVE_MSG "Keep alive"
+#define QUESTION_TIMEOUT 10
 
 #define AUTH_SUCCESS 0
 #define AUTH_FAIL 1
@@ -97,7 +98,24 @@ void answer_question() {
     fflush(stdin);
     pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
-    scanf("%s", curr_answer);
+    // Use select on stdin
+    fd_set readfds;
+    struct timeval tv;
+    tv.tv_sec = QUESTION_TIMEOUT;
+    tv.tv_usec = 0;
+    FD_ZERO(&readfds);
+    FD_SET(0, &readfds);
+    int ret = select(1, &readfds, NULL, NULL, &tv);
+    if(ret == -1){
+        perror("select");
+        exit(1);
+    }
+    else if(ret){
+        scanf("%s", curr_answer);
+    }
+    else{
+        printf("No answer entered, using an empty string...\n");
+    }
     pthread_mutex_unlock(&lock_answer);
 }
 
