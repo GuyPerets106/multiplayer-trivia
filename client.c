@@ -37,6 +37,12 @@ int game_started = 0;
 
 void* handle_message(void* args);
 
+void handle_signal(int sig) {
+    if (sig == SIGUSR1) {
+        printf("Question timout reached\n");
+    }
+}
+
 // Define the message structure
 typedef struct {
     int type;  // Message type
@@ -87,31 +93,9 @@ void send_authentication_code(int sock){
 }
 
 void answer_question() {
-    printf("Enter your answer: ");
     pthread_mutex_lock(&lock_answer);
-    // Use select to check stdin for an answer
-    fd_set readfds;
-    struct timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-    int ret;
-    FD_ZERO(&readfds);
-    FD_SET(fileno(stdin), &readfds); // 0 is the file descriptor for stdin
-    while(1){
-        fd_set temp = readfds;
-        ret = select(1, &temp, NULL, NULL, &tv);
-        if(ret == -1){
-            perror("select");
-            exit(1);
-        }
-        else if(FD_ISSET(fileno(stdin), &temp)){
-            scanf("%s", curr_answer);
-            break;
-        }
-        else{ // Timeout reached
-            continue;
-        }
-    }
+    printf("Enter your answer: ");
+    scanf("%s", curr_answer);
     pthread_mutex_unlock(&lock_answer);
 }
 
@@ -289,6 +273,7 @@ void open_multicast_socket(int unicast_sock, char* msg){
 }
 
 void* handle_message(void* args) {
+    signal(SIGUSR1, handle_signal);
     MessageThreadArgs* thread_args = (MessageThreadArgs*)args;
     Message msg = thread_args->msg;
     int client_socket = thread_args->socket;
@@ -321,7 +306,7 @@ void* handle_message(void* args) {
                     scanf("%s", username);
                     name_flag = 0;
                 }
-                else{ // Timeout reached
+                else{
                     printf("No game name entered, using your IP address...\n");
                     name_flag = 0;
                 }
@@ -356,14 +341,13 @@ void* handle_message(void* args) {
             pthread_mutex_lock(&lock_question);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             pthread_mutex_unlock(&lock_question);
-            answer_question(); // using select
+            answer_question();
             send_message(client_socket, ANSWER, curr_answer);
             break;
         case ANSWER: // ! Receive Unicast When Timeout
             pthread_mutex_lock(&lock_question);
-            pthread_cancel(curr_question_thread);
+            pthread_kill(curr_question_thread, SIGUSR1);
             pthread_mutex_unlock(&lock_question);
-            printf("Question timout reached\n");
             break;
         case SCOREBOARD:
             printf("%s", msg.data);
