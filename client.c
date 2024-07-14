@@ -367,6 +367,7 @@ void* handle_message(void* args) {
         case ANSWER: // ! Receive Unicast When Timeout
             pthread_mutex_lock(&lock_question);
             pthread_kill(curr_question_thread, SIGUSR1);
+            pthread_cancel(curr_question_thread);
             pthread_mutex_unlock(&lock_question);
             break;
         case SCOREBOARD:
