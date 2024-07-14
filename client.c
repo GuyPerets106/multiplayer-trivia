@@ -104,7 +104,7 @@ void answer_question() {
             perror("select");
             exit(1);
         }
-        else if(ret){
+        else if(FD_ISSET(fileno(stdin), &temp)){
             scanf("%s", curr_answer);
             break;
         }
