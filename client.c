@@ -108,8 +108,9 @@ void answer_question() {
             break;
         }
         else {
+            printf("No answer entered, try again...\n");
             fflush(stdin);
-            sleep(1);
+            sleep(2);
         }
     }
     pthread_mutex_unlock(&lock_answer);
