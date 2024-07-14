@@ -108,6 +108,7 @@ void answer_question() {
         }
         else {
             fflush(stdin);
+            sleep(1);
         }
     }
     pthread_mutex_unlock(&lock_answer);
