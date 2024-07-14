@@ -253,6 +253,7 @@ void* handle_client_msg(void* arg){
             handle_keep_alive(sock);
             break;
         default:
+            printf("Invalid message type %d\n", msg->type);
             break;
     }
     return NULL;
@@ -263,6 +264,7 @@ void* listen_for_messages(void* args){
     // will be handled in another thread
     int sock = *(int*)args;
     Message msg;
+    msg.type = -1;
     ClientMsg client_msg;
     int bytes_receive_unicast =  0;
     while(1){
