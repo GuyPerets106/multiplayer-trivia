@@ -104,17 +104,17 @@ void answer_question() {
     tv.tv_sec = QUESTION_TIMEOUT;
     tv.tv_usec = 0;
     FD_ZERO(&readfds);
-    FD_SET(0, &readfds);
+    FD_SET(fileno(stdin), &readfds);
     int ret = select(1, &readfds, NULL, NULL, &tv);
     if(ret == -1){
         perror("select");
         exit(1);
     }
-    else if(ret){
+    else if(FD_ISSET(fileno(stdin), &readfds)){
         scanf("%s", curr_answer);
     }
     else{
-        printf("No answer entered, using an empty string...\n");
+        printf("Question Timeout Reached...\n");
     }
     pthread_mutex_unlock(&lock_answer);
 }
@@ -370,6 +370,7 @@ void* handle_message(void* args) {
             }
             break;
         case ANSWER: // ! Receive Unicast When Timeout
+            // ? DEPRECATED
             pthread_mutex_lock(&lock_question);
             pthread_kill(curr_question_thread, SIGUSR1);
             pthread_mutex_unlock(&lock_question);

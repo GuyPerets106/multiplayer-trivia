@@ -476,7 +476,7 @@ void* send_questions(void* args){
         curr_question_start_time = time(NULL);
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
         sleep(QUESTION_TIMEOUT);
-        send_multicast_message(multicast_sock, multicast_addr, ANSWER, "Time is up");
+        // send_multicast_message(multicast_sock, multicast_addr, ANSWER, "Time is up");
         sleep(QUESTION_TIMEOUT_BREAK);
         send_scoreboard(multicast_sock, multicast_addr);
         sleep(SCOREBOARD_BREAK);
