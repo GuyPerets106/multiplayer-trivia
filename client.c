@@ -41,9 +41,6 @@ void handle_signal(int sig) {
     if (sig == SIGUSR1) {
         printf("Question timout reached\n");
     }
-    // stdin go back to blocking
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK);
     return;
 }
 
@@ -99,37 +96,11 @@ void send_authentication_code(int sock){
 void answer_question() {
     pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
-    fd_set read_fds;
-    struct timeval timeout;
-    int retval;
-
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-
-    while (1) {
-        FD_ZERO(&read_fds);
-        FD_SET(STDIN_FILENO, &read_fds);
-
-        // Set timeout to 1 second
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
-
-        retval = select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
-
-        if (retval == -1) {
-            perror("select()");
-            pthread_exit(NULL);
-        } else if (retval) {
-            if (FD_ISSET(STDIN_FILENO, &read_fds)) {
-                if (fgets(curr_answer, sizeof(curr_answer), stdin) != NULL) {
-                    break;
-                } else {
-                    perror("fgets()");
-                    pthread_exit(NULL);
-                }
-            }
-        } else {
-            continue;
+    // Use fgets with stdin to get the answer
+    while(1){
+        fgets(curr_answer, sizeof(curr_answer), stdin);
+        if (strlen(curr_answer) > 0) {
+            break;
         }
     }
     pthread_mutex_unlock(&lock_answer);
