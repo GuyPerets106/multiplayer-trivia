@@ -293,6 +293,7 @@ void* listen_for_messages(void* args){
         }
         client_msg.msg = msg;
         client_msg.socket = sock;
+        printf("Client sent message %d: %s\n", msg.type, msg.data);
         pthread_t handle_message_thread;
         pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
         pthread_detach(handle_message_thread);
