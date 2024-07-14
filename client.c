@@ -97,18 +97,7 @@ void answer_question() {
     fflush(stdin);
     pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
-    // Use fgets with stdin to get the answer
-    // If the answer is empty, try again
-    while(1){
-        fgets(curr_answer, sizeof(curr_answer), stdin);
-        if (strlen(curr_answer) < 2) {
-            memset(curr_answer, 0, sizeof(curr_answer));
-            continue;
-        }
-        else {
-            break;
-        }
-    }
+    scanf("%s", curr_answer);
     pthread_mutex_unlock(&lock_answer);
 }
 
