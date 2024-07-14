@@ -327,13 +327,13 @@ void* handle_message(void* args) {
             send_message(client_socket, KEEP_ALIVE, KEEP_ALIVE_MSG); // Send Unicast
             break;
         case QUESTION: // Receive Multicast
+            memset(curr_answer, 0, sizeof(curr_answer));
             printf("%s", msg.data);
             pthread_mutex_lock(&lock_question);
             curr_question_thread = pthread_self(); // ! Consider Mutex
             pthread_mutex_unlock(&lock_question);
             answer_question();
             send_message(client_socket, ANSWER, curr_answer);
-            memset(curr_answer, 0, sizeof(curr_answer));
             break;
         case ANSWER: // ! Receive Unicast When Timeout
             pthread_mutex_lock(&lock_question);
