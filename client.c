@@ -41,9 +41,6 @@ void handle_signal(int sig) {
     if (sig == SIGUSR1) {
         printf("Question timout reached\n");
     }
-    // block stdin
-    fcntl(0, F_SETFL, fcntl(0, F_GETFL) & ~O_NONBLOCK);
-    fflush(stdin);
     return;
 }
 
@@ -83,7 +80,7 @@ void send_message(int sock, int msg_type, const char *msg_data) {
     msg.data[strlen(msg_data)] = '\0';  // Ensure null-termination
 
     // Send the message
-    printf("Sending message %d: %s\n", msg.type, msg.data);
+    // printf("Sending message %d: %s\n", msg.type, msg.data);
     send(sock, &msg, sizeof(msg), 0);
     pthread_mutex_unlock(&lock_answer);
 }
@@ -99,20 +96,8 @@ void send_authentication_code(int sock){
 void answer_question() {
     fflush(stdin);
     pthread_mutex_lock(&lock_answer);
-    printf("Enter your answer:\n");
-    // non-block stdin
-    fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
-    while(1){
-        scanf("%s", curr_answer);
-        if (strlen(curr_answer) > 0) {
-            break;
-        }
-        else {
-            printf("No answer entered, try again...\n");
-            fflush(stdin);
-            sleep(2);
-        }
-    }
+    printf("Enter your answer: ");
+    scanf("%s", curr_answer);
     pthread_mutex_unlock(&lock_answer);
 }
 
@@ -369,7 +354,6 @@ void* handle_message(void* args) {
         case ANSWER: // ! Receive Unicast When Timeout
             pthread_mutex_lock(&lock_question);
             pthread_kill(curr_question_thread, SIGUSR1);
-            pthread_cancel(curr_question_thread);
             pthread_mutex_unlock(&lock_question);
             break;
         case SCOREBOARD:
