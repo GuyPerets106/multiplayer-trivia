@@ -277,7 +277,7 @@ void* handle_message(void* args) {
         case AUTH_SUCCESS:
             printf("Authentication Successful\n");
             printf("Choose your game name:\n");
-            char username[1024];
+            char username[2048];
             fd_set readfds;
             while(name_flag){
                 struct timeval tv;
@@ -298,7 +298,6 @@ void* handle_message(void* args) {
                     name_flag = 0;
                 }
                 else{
-                    memset(username, 0, sizeof(username));
                     printf("No game name entered, using your IP address...\n");
                     name_flag = 0;
                 }
