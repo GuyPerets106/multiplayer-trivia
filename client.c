@@ -41,6 +41,8 @@ void handle_signal(int sig) {
     if (sig == SIGUSR1) {
         printf("Question timout reached\n");
     }
+    // block stdin
+    fcntl(0, F_SETFL, fcntl(0, F_GETFL) & ~O_NONBLOCK);
     return;
 }
 
@@ -97,7 +99,17 @@ void answer_question() {
     fflush(stdin);
     pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
-    scanf("%s", curr_answer);
+    // non-block stdin
+    fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+    while(1){
+        scanf("%s", curr_answer);
+        if (strlen(curr_answer) > 0) {
+            break;
+        }
+        else {
+            fflush(stdin);
+        }
+    }
     pthread_mutex_unlock(&lock_answer);
 }
 
