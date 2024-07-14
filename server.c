@@ -266,13 +266,14 @@ void* listen_for_messages(void* args){
     Message msg;
     msg.type = -1;
     ClientMsg client_msg;
-    int bytes_receive_unicast =  0;
+    int bytes_receive_unicast = 0;
     while(1){
         memset(&msg, 0, sizeof(msg));
         if (client_count == 0){
             break;
         }
         bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
+        printf("Bytes received: %d\n", bytes_receive_unicast);
         if (bytes_receive_unicast == 0) { // Closed socket
             close(sock);
             pthread_mutex_lock(&client_mutex);
