@@ -89,7 +89,29 @@ void send_authentication_code(int sock){
 void answer_question() {
     pthread_mutex_lock(&lock_answer);
     printf("Enter your answer: ");
-    scanf("%s", curr_answer);
+    // Use select to check stdin for an answer
+    while(1){
+        fd_set readfds;
+        struct timeval tv;
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+        int ret;
+        FD_ZERO(&readfds);
+        FD_SET(0, &readfds);
+        ret = select(1, &readfds, NULL, NULL, &tv);
+        if(ret == -1){
+            perror("select");
+            exit(1);
+        }
+        else if(ret){
+            scanf("%s", curr_answer);
+            break;
+        }
+        else{
+            sleep(1);
+            continue;
+        }
+    }
     pthread_mutex_unlock(&lock_answer);
 }
 
