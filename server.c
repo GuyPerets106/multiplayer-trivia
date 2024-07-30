@@ -611,7 +611,8 @@ int main() {
     multicast_addr.sin_family = AF_INET;
     multicast_addr.sin_addr.s_addr = inet_addr(MULTICAST_IP);
     multicast_addr.sin_port = htons(MULTICAST_PORT);
-
+    int ttl = 10;
+    setsockopt(multicast_sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
     printf("Game Starting...\n");
     pthread_t game_starting_thread;
     pthread_create(&game_starting_thread, NULL, distribute_multicast_address, NULL);
