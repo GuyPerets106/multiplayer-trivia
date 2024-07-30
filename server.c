@@ -273,7 +273,6 @@ void* listen_for_messages(void* args){
             break;
         }
         bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
-        printf("Bytes received: %d\n", bytes_receive_unicast);
         if (bytes_receive_unicast == 0) { // Closed socket
             close(sock);
             pthread_mutex_lock(&client_mutex);
@@ -296,13 +295,12 @@ void* listen_for_messages(void* args){
             return NULL;
         }
         // Check if a message is empty, if so - continue
-        if (msg.type == 0 && strlen(msg.data) == 0) {
+        if (strlen(msg.data) == 0) {
             printf("Empty message received\n");
             continue;
         }
         client_msg.msg = msg;
         client_msg.socket = sock;
-        printf("Client sent message %d: %s\n", msg.type, msg.data);
         pthread_t handle_message_thread;
         pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
         pthread_detach(handle_message_thread);
