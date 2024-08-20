@@ -48,7 +48,7 @@ void handle_signal(int sig) {
 // Define the message structure
 typedef struct {
     int type;  // Message type
-    char data[2048];  // Message data
+    char data[1024];  // Message data
 } Message;
 
 typedef struct {
@@ -70,7 +70,7 @@ typedef struct {
 pthread_mutex_t lock_answer = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock_question = PTHREAD_MUTEX_INITIALIZER;
 pthread_t curr_question_thread;
-char curr_answer[2048];
+char curr_answer[1024];
 
 void send_message(int sock, int msg_type, const char *msg_data) {
     pthread_mutex_lock(&lock_answer);
@@ -87,7 +87,7 @@ void send_message(int sock, int msg_type, const char *msg_data) {
 }
 
 void send_authentication_code(int sock){
-    char auth_buffer[2048];
+    char auth_buffer[1024];
     memset(auth_buffer, 0, sizeof(auth_buffer));
     printf("Enter the authentication code: ");
     scanf("%s", auth_buffer);
@@ -124,7 +124,7 @@ int establish_connection(){
     int sock = 0;
     struct sockaddr_in serv_addr;
     char *hello_msg = "Ready";
-    char buffer[2048] = {0};
+    char buffer[1024] = {0};
     char server_ip[16];
     int server_port;
     int address_ok = 0;
@@ -306,7 +306,7 @@ void* handle_message(void* args) {
         case AUTH_SUCCESS:
             printf("Authentication Successful\n");
             printf("Choose your game name:\n");
-            char username[2048];
+            char username[1024];
             fd_set readfds;
             while(name_flag){
                 struct timeval tv;

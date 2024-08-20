@@ -57,7 +57,7 @@ typedef struct {
     struct sockaddr_in address;
     time_t last_keep_alive_time;
     int score;
-    char name[2048];
+    char name[1024];
 } Client;
 
 typedef struct {
@@ -69,7 +69,7 @@ typedef struct {
 // Define the message structure
 typedef struct {
     int type;  // Message type
-    char data[2048];  // Message data
+    char data[1024];  // Message data
 } Message;
 
 typedef struct {
@@ -78,15 +78,15 @@ typedef struct {
 } ClientMsg;
 
 typedef struct {
-    char question[2048];
-    char answer[2048];
+    char question[1024];
+    char answer[1024];
 } QA;
 
 Client clients[MAX_CLIENTS];
 int client_count = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
 QA questions[NUM_OF_QUESTIONS];
-char curr_question[2048];
+char curr_question[1024];
 int curr_question_index = 0;
 time_t curr_question_start_time;
 int game_over_flag = 0;
@@ -104,7 +104,7 @@ void create_shuffled_questions(FILE* file){
     for (int i = 0; i < NUM_OF_QUESTIONS; i++){
         questions[i].question[0] = '\0';
         for(int j = 0; j < 5; j++){ // Question + x4 Multi-Choice Answers
-            char line[2048];
+            char line[1024];
             if (fgets(line, sizeof(line), file) == NULL) {
                 if (feof(file)) {
                     printf("Unexpected end of file\n");
@@ -118,7 +118,7 @@ void create_shuffled_questions(FILE* file){
             }
             strcat(questions[i].question, line);
         }
-        char line[2048];
+        char line[1024];
         if (fgets(line, sizeof(line), file) == NULL) {
             if (feof(file)) {
                     printf("Unexpected end of file\n");
@@ -315,7 +315,7 @@ void* authenticate_client(void* arg) {
     struct sockaddr_in address = client->address;
     int wrong_auth_counter = 0;
 
-    char auth_buffer[2048];
+    char auth_buffer[1024];
     while(1){
         memset(auth_buffer, 0, sizeof(auth_buffer));
         int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
@@ -360,7 +360,7 @@ void* authenticate_client(void* arg) {
 
 void* distribute_multicast_address(void* arg){ // Using unicast messages
     for (int i = 0; i < client_count; i++) {
-        char multicast_address[2048];
+        char multicast_address[1024];
         sprintf(multicast_address, "%s:%d", MULTICAST_IP, MULTICAST_PORT); // Creating the multicast address
         send_message(clients[i].socket, GAME_STARTING, multicast_address);
     }
@@ -446,10 +446,10 @@ void* deny_new_connections(void* arg) {
 
 
 void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
-    char scoreboard[2048];
+    char scoreboard[1024];
     sprintf(scoreboard, "\n==========Scoreboard==========\n");
     for (int i = 0; i < client_count; i++) {
-        char client_score[2048];
+        char client_score[1024];
         sprintf(client_score, "%s\t%d\n", clients[i].name, clients[i].score);
         strcat(scoreboard, client_score);
     }
