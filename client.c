@@ -70,7 +70,7 @@ typedef struct {
 pthread_mutex_t lock_answer = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock_question = PTHREAD_MUTEX_INITIALIZER;
 pthread_t curr_question_thread;
-char curr_answer[1024];
+char curr_answer[2048];
 
 void send_message(int sock, int msg_type, const char *msg_data) {
     pthread_mutex_lock(&lock_answer);
@@ -87,7 +87,7 @@ void send_message(int sock, int msg_type, const char *msg_data) {
 }
 
 void send_authentication_code(int sock){
-    char auth_buffer[1024];
+    char auth_buffer[2048];
     memset(auth_buffer, 0, sizeof(auth_buffer));
     printf("Enter the authentication code: ");
     scanf("%s", auth_buffer);
@@ -124,7 +124,7 @@ int establish_connection(){
     int sock = 0;
     struct sockaddr_in serv_addr;
     char *hello_msg = "Ready";
-    char buffer[1024] = {0};
+    char buffer[2048] = {0};
     char server_ip[16];
     int server_port;
     int address_ok = 0;
@@ -182,7 +182,7 @@ void* handle_unicast(void* args){ // Handles first connections with the server a
             thread_args->msg = msg_unicast;
             // printf("Message received: %s\n", msg_unicast.data);
             pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
-            pthread_join(handle_unicast_msg, NULL);
+            pthread_detach(handle_unicast_msg);
             continue; // ! REMOVE ALL CONTINUES WHEN MULTICAST IS IMPLEMENTED
         }
         else if (bytes_receive_unicast == 0) { // Socket closed

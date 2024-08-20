@@ -57,7 +57,7 @@ typedef struct {
     struct sockaddr_in address;
     time_t last_keep_alive_time;
     int score;
-    char name[1024];
+    char name[2048];
 } Client;
 
 typedef struct {
@@ -78,15 +78,15 @@ typedef struct {
 } ClientMsg;
 
 typedef struct {
-    char question[1024];
-    char answer[1024];
+    char question[2048];
+    char answer[2048];
 } QA;
 
 Client clients[MAX_CLIENTS];
 int client_count = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER; 
 QA questions[NUM_OF_QUESTIONS];
-char curr_question[1024];
+char curr_question[2048];
 int curr_question_index = 0;
 time_t curr_question_start_time;
 int game_over_flag = 0;
@@ -104,7 +104,7 @@ void create_shuffled_questions(FILE* file){
     for (int i = 0; i < NUM_OF_QUESTIONS; i++){
         questions[i].question[0] = '\0';
         for(int j = 0; j < 5; j++){ // Question + x4 Multi-Choice Answers
-            char line[1024];
+            char line[2048];
             if (fgets(line, sizeof(line), file) == NULL) {
                 if (feof(file)) {
                     printf("Unexpected end of file\n");
@@ -118,7 +118,7 @@ void create_shuffled_questions(FILE* file){
             }
             strcat(questions[i].question, line);
         }
-        char line[1024];
+        char line[2048];
         if (fgets(line, sizeof(line), file) == NULL) {
             if (feof(file)) {
                     printf("Unexpected end of file\n");
@@ -315,7 +315,7 @@ void* authenticate_client(void* arg) {
     struct sockaddr_in address = client->address;
     int wrong_auth_counter = 0;
 
-    char auth_buffer[1024];
+    char auth_buffer[2048];
     while(1){
         memset(auth_buffer, 0, sizeof(auth_buffer));
         int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
@@ -360,7 +360,7 @@ void* authenticate_client(void* arg) {
 
 void* distribute_multicast_address(void* arg){ // Using unicast messages
     for (int i = 0; i < client_count; i++) {
-        char multicast_address[1024];
+        char multicast_address[2048];
         sprintf(multicast_address, "%s:%d", MULTICAST_IP, MULTICAST_PORT); // Creating the multicast address
         send_message(clients[i].socket, GAME_STARTING, multicast_address);
     }
