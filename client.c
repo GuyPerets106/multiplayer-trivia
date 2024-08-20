@@ -22,17 +22,17 @@
 #define KEEP_ALIVE_MSG "Keep alive"
 #define QUESTION_TIMEOUT 10
 
-#define AUTH_SUCCESS 0
-#define AUTH_FAIL 1
-#define MAX_TRIES 2
-#define GAME_STARTED 3
-#define GAME_STARTING 4
-#define QUESTION 5
-#define ANSWER 6
-#define KEEP_ALIVE 7
-#define SCOREBOARD 8
-#define GAME_OVER 9
-#define INVALID 10
+#define AUTH_SUCCESS 1
+#define AUTH_FAIL 2
+#define MAX_TRIES 3
+#define GAME_STARTED 4
+#define GAME_STARTING 5
+#define QUESTION 6
+#define ANSWER 7
+#define KEEP_ALIVE 8
+#define SCOREBOARD 9
+#define GAME_OVER 10
+#define INVALID 11
 
 int game_started = 0;
 
