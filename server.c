@@ -260,15 +260,15 @@ void* handle_client_msg(void* arg){
 }
 
 void* listen_for_messages(void* args){ 
-    // Every Unicast message coming for a specific client 
+    // Every Unicast message coming from a specific client 
     // will be handled in another thread
     int sock = *(int*)args;
     Message msg;
-    msg.type = -1;
     ClientMsg client_msg;
     int bytes_receive_unicast = 0;
     while(1){
-        memset(&msg, 0, sizeof(msg));
+        msg.data[0] = '\0';
+        msg.type = -1;
         if (client_count == 0){
             break;
         }
@@ -475,7 +475,7 @@ void* send_questions(void* args){
         send_multicast_message(multicast_sock, multicast_addr, QUESTION, curr_question);
         sleep(QUESTION_TIMEOUT);
         // send_multicast_message(multicast_sock, multicast_addr, ANSWER, "Time is up");
-        sleep(QUESTION_TIMEOUT_BREAK);
+        // sleep(QUESTION_TIMEOUT_BREAK);
         send_scoreboard(multicast_sock, multicast_addr);
         sleep(SCOREBOARD_BREAK);
         num_questions--;
