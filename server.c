@@ -264,11 +264,11 @@ void* listen_for_messages(void* args){
     // will be handled in another thread
     int sock = *(int*)args;
     Message msg;
+    msg.type = -1;
     ClientMsg client_msg;
     int bytes_receive_unicast = 0;
     while(1){
-        msg.data[0] = '\0';
-        msg.type = -1;
+        memset(&msg, 0, sizeof(msg));
         if (client_count == 0){
             break;
         }
