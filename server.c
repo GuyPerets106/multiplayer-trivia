@@ -165,6 +165,17 @@ void create_shuffled_questions(FILE* file){
     // }
 }
 
+// send_message: Sends a message to a specific client
+void send_message(int sock, int msg_type, const char *msg_data) {
+    Message msg;
+    msg.type = msg_type;
+    strncpy(msg.data, msg_data, sizeof(msg.data) - 1);
+    msg.data[sizeof(msg.data) - 1] = '\0';  // Ensure null-termination
+
+    // Send the message
+    send(sock, &msg, sizeof(msg), 0);
+}
+
 // authenticate_client: a thread that runs for each client, Blocking on recv until the client sends the correct authentication code, anf for every case of an auth code, return to client the relevant message(AUTH_SUCCESS, AUTH_FAIL, MAX_TRIES)
 void* authenticate_client(void* arg) {
     Client* client = (Client*)arg;
@@ -274,18 +285,6 @@ void* wait_for_connections(void* arg){
         }
     }
     return NULL;
-}
-
-
-// send_message: Sends a message to a specific client
-void send_message(int sock, int msg_type, const char *msg_data) {
-    Message msg;
-    msg.type = msg_type;
-    strncpy(msg.data, msg_data, sizeof(msg.data) - 1);
-    msg.data[sizeof(msg.data) - 1] = '\0';  // Ensure null-termination
-
-    // Send the message
-    send(sock, &msg, sizeof(msg), 0);
 }
 
 
