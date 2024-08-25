@@ -165,55 +165,6 @@ void create_shuffled_questions(FILE* file){
     // }
 }
 
-void* listen_for_messages(void* args){ 
-    // Every Unicast message coming from a specific client 
-    // will be handled in another thread
-    int sock = *(int*)args;
-    Message msg;
-    msg.type = -1;
-    ClientMsg client_msg;
-    int bytes_receive_unicast = 0;
-    while(1){
-        memset(&msg, 0, sizeof(msg));
-        if (client_count == 0){
-            break;
-        }
-        bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
-        if (bytes_receive_unicast == 0) { // Closed socket
-            close(sock);
-            pthread_mutex_lock(&client_mutex);
-            for (int i = 0; i < client_count; i++) {
-                if (clients[i].socket == sock) {
-                    printf("%s disconnected\n", clients[i].name);
-                    for (int j = i; j < client_count - 1; j++) {
-                        clients[j] = clients[j + 1];
-                    }
-                    client_count--;
-                    break;
-                }
-            }
-            pthread_mutex_unlock(&client_mutex);
-            return NULL;
-        }
-        else if (bytes_receive_unicast < 0) {
-            perror("Error receiving message");
-            close(sock);
-            return NULL;
-        }
-        // Check if a message is empty, if so - continue
-        if (strlen(msg.data) == 0) {
-            printf("Empty message received\n");
-            continue;
-        }
-        client_msg.msg = msg;
-        client_msg.socket = sock;
-        pthread_t handle_message_thread;
-        pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
-        pthread_detach(handle_message_thread);
-    }
-    return NULL;
-}
-
 // send_message: Sends a message to a specific client
 void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
@@ -431,7 +382,54 @@ void* authenticate_client(void* arg) {
     return NULL;
 }
 
-
+void* listen_for_messages(void* args){ 
+    // Every Unicast message coming from a specific client 
+    // will be handled in another thread
+    int sock = *(int*)args;
+    Message msg;
+    msg.type = -1;
+    ClientMsg client_msg;
+    int bytes_receive_unicast = 0;
+    while(1){
+        memset(&msg, 0, sizeof(msg));
+        if (client_count == 0){
+            break;
+        }
+        bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
+        if (bytes_receive_unicast == 0) { // Closed socket
+            close(sock);
+            pthread_mutex_lock(&client_mutex);
+            for (int i = 0; i < client_count; i++) {
+                if (clients[i].socket == sock) {
+                    printf("%s disconnected\n", clients[i].name);
+                    for (int j = i; j < client_count - 1; j++) {
+                        clients[j] = clients[j + 1];
+                    }
+                    client_count--;
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&client_mutex);
+            return NULL;
+        }
+        else if (bytes_receive_unicast < 0) {
+            perror("Error receiving message");
+            close(sock);
+            return NULL;
+        }
+        // Check if a message is empty, if so - continue
+        if (strlen(msg.data) == 0) {
+            printf("Empty message received\n");
+            continue;
+        }
+        client_msg.msg = msg;
+        client_msg.socket = sock;
+        pthread_t handle_message_thread;
+        pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
+        pthread_detach(handle_message_thread);
+    }
+    return NULL;
+}
 
 void* distribute_multicast_address(void* arg){ // Using unicast messages
     for (int i = 0; i < client_count; i++) {
