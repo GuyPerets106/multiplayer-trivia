@@ -517,7 +517,7 @@ void handle_client_answer(int client_sock, char* client_answer) {
                         send_message(client_sock, ANSWER, "Time is up");
                         break;
                     }
-                    int curr_score = floor(30 / elapsed_time * 100 + elapsed_time);
+                    int curr_score = (30 / elapsed_time * 100 + elapsed_time);
                     printf("%s got %d points\n", clients[i].name, curr_score);
                     clients[i].score += curr_score;
                 }
