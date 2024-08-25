@@ -165,6 +165,55 @@ void create_shuffled_questions(FILE* file){
     // }
 }
 
+void* listen_for_messages(void* args){ 
+    // Every Unicast message coming from a specific client 
+    // will be handled in another thread
+    int sock = *(int*)args;
+    Message msg;
+    msg.type = -1;
+    ClientMsg client_msg;
+    int bytes_receive_unicast = 0;
+    while(1){
+        memset(&msg, 0, sizeof(msg));
+        if (client_count == 0){
+            break;
+        }
+        bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
+        if (bytes_receive_unicast == 0) { // Closed socket
+            close(sock);
+            pthread_mutex_lock(&client_mutex);
+            for (int i = 0; i < client_count; i++) {
+                if (clients[i].socket == sock) {
+                    printf("%s disconnected\n", clients[i].name);
+                    for (int j = i; j < client_count - 1; j++) {
+                        clients[j] = clients[j + 1];
+                    }
+                    client_count--;
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&client_mutex);
+            return NULL;
+        }
+        else if (bytes_receive_unicast < 0) {
+            perror("Error receiving message");
+            close(sock);
+            return NULL;
+        }
+        // Check if a message is empty, if so - continue
+        if (strlen(msg.data) == 0) {
+            printf("Empty message received\n");
+            continue;
+        }
+        client_msg.msg = msg;
+        client_msg.socket = sock;
+        pthread_t handle_message_thread;
+        pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
+        pthread_detach(handle_message_thread);
+    }
+    return NULL;
+}
+
 // send_message: Sends a message to a specific client
 void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
@@ -176,55 +225,6 @@ void send_message(int sock, int msg_type, const char *msg_data) {
     send(sock, &msg, sizeof(msg), 0);
 }
 
-// authenticate_client: a thread that runs for each client, Blocking on recv until the client sends the correct authentication code, anf for every case of an auth code, return to client the relevant message(AUTH_SUCCESS, AUTH_FAIL, MAX_TRIES)
-void* authenticate_client(void* arg) {
-    Client* client = (Client*)arg;
-    int socket = client->socket;
-    struct sockaddr_in address = client->address;
-    int wrong_auth_counter = 0;
-
-    char auth_buffer[1024];
-    while(1){
-        memset(auth_buffer, 0, sizeof(auth_buffer));
-        int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
-        if (ret == 0) { // Closed socket
-            return NULL;
-        }
-        else if (ret < 0) {
-            perror("Error receiving authentication code");
-            return NULL;
-        }
-
-        if (strcmp(auth_buffer, auth_code) != 0) {
-            send_message(socket, AUTH_FAIL, AUTH_FAIL_MSG);
-            wrong_auth_counter++;
-            if (wrong_auth_counter < 5) {
-                continue;
-            }
-            else {
-                send_message(socket, MAX_TRIES, MAX_TRIES_MSG);
-                printf("Maximum number of tries exceeded. Closing connection.\n");
-                // usleep(1000000); 
-                close(socket);
-                return NULL;
-            }
-        }
-        else {
-            send_message(socket, AUTH_SUCCESS, AUTH_SUCCESS_MSG);
-            pthread_mutex_lock(&client_mutex);
-            clients[client_count].socket = socket;
-            clients[client_count].address = address;
-            client_count++;
-            pthread_mutex_unlock(&client_mutex);
-            break;
-        }
-    }
-    printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-    pthread_t listen_for_messages_thread;
-    pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&socket);
-    pthread_detach(listen_for_messages_thread);
-    return NULL;
-}
 
 // ? ********  CONNECITON PHASE ******** 
 // wait_for_connections: a thread that run before game phase, Waits for connections for START_GAME_TIMEOUT seconds, if connection received - authenticate the client, using a thread for each client, by autenticate_client function
@@ -381,52 +381,53 @@ void* handle_client_msg(void* arg){
     return NULL;
 }
 
-void* listen_for_messages(void* args){ 
-    // Every Unicast message coming from a specific client 
-    // will be handled in another thread
-    int sock = *(int*)args;
-    Message msg;
-    msg.type = -1;
-    ClientMsg client_msg;
-    int bytes_receive_unicast = 0;
+// authenticate_client: a thread that runs for each client, Blocking on recv until the client sends the correct authentication code, anf for every case of an auth code, return to client the relevant message(AUTH_SUCCESS, AUTH_FAIL, MAX_TRIES)
+void* authenticate_client(void* arg) {
+    Client* client = (Client*)arg;
+    int socket = client->socket;
+    struct sockaddr_in address = client->address;
+    int wrong_auth_counter = 0;
+
+    char auth_buffer[1024];
     while(1){
-        memset(&msg, 0, sizeof(msg));
-        if (client_count == 0){
+        memset(auth_buffer, 0, sizeof(auth_buffer));
+        int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
+        if (ret == 0) { // Closed socket
+            return NULL;
+        }
+        else if (ret < 0) {
+            perror("Error receiving authentication code");
+            return NULL;
+        }
+
+        if (strcmp(auth_buffer, auth_code) != 0) {
+            send_message(socket, AUTH_FAIL, AUTH_FAIL_MSG);
+            wrong_auth_counter++;
+            if (wrong_auth_counter < 5) {
+                continue;
+            }
+            else {
+                send_message(socket, MAX_TRIES, MAX_TRIES_MSG);
+                printf("Maximum number of tries exceeded. Closing connection.\n");
+                // usleep(1000000); 
+                close(socket);
+                return NULL;
+            }
+        }
+        else {
+            send_message(socket, AUTH_SUCCESS, AUTH_SUCCESS_MSG);
+            pthread_mutex_lock(&client_mutex);
+            clients[client_count].socket = socket;
+            clients[client_count].address = address;
+            client_count++;
+            pthread_mutex_unlock(&client_mutex);
             break;
         }
-        bytes_receive_unicast = recv(sock, &msg, sizeof(msg), 0);
-        if (bytes_receive_unicast == 0) { // Closed socket
-            close(sock);
-            pthread_mutex_lock(&client_mutex);
-            for (int i = 0; i < client_count; i++) {
-                if (clients[i].socket == sock) {
-                    printf("%s disconnected\n", clients[i].name);
-                    for (int j = i; j < client_count - 1; j++) {
-                        clients[j] = clients[j + 1];
-                    }
-                    client_count--;
-                    break;
-                }
-            }
-            pthread_mutex_unlock(&client_mutex);
-            return NULL;
-        }
-        else if (bytes_receive_unicast < 0) {
-            perror("Error receiving message");
-            close(sock);
-            return NULL;
-        }
-        // Check if a message is empty, if so - continue
-        if (strlen(msg.data) == 0) {
-            printf("Empty message received\n");
-            continue;
-        }
-        client_msg.msg = msg;
-        client_msg.socket = sock;
-        pthread_t handle_message_thread;
-        pthread_create(&handle_message_thread, NULL, handle_client_msg, (void*)&client_msg);
-        pthread_detach(handle_message_thread);
     }
+    printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+    pthread_t listen_for_messages_thread;
+    pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&socket);
+    pthread_detach(listen_for_messages_thread);
     return NULL;
 }
 
