@@ -177,67 +177,6 @@ void send_message(int sock, int msg_type, const char *msg_data) {
 }
 
 
-// ? ********  CONNECITON PHASE ******** 
-// wait_for_connections: a thread that run before game phase, Waits for connections for START_GAME_TIMEOUT seconds, if connection received - authenticate the client, using a thread for each client, by autenticate_client function
-void* wait_for_connections(void* arg){
-    SocketInfo* info = (SocketInfo*)arg;
-    int server_fd = info->socket_fd; // Welcome Socket
-    struct sockaddr_in address = info->address;
-    int addrlen = sizeof(address);
-    fd_set read_fds;   // set of socket descriptors we want to read from
-    time_t start_time = time(NULL);
-    int client_socket;
-    int max_fd = server_fd;
-
-
-    while(1) {
-        fd_set tmp_fds = read_fds; // Create a copy of the read_fds
-        // Get the current time
-        time_t current_time = time(NULL);
-
-        // Calculate the elapsed time
-        int elapsed_time = (int)difftime(current_time, start_time);
-        struct timeval tv;
-        tv.tv_sec = START_GAME_TIMEOUT - elapsed_time;
-        tv.tv_usec = 0;
-        FD_ZERO(&tmp_fds);
-        FD_SET(server_fd, &tmp_fds);
-        int ret = select(max_fd + 1, &tmp_fds, NULL, NULL, &tv); // Blocking until a connection is received or timeout
-        if (ret < 0 && errno != EINTR) {
-            perror("Error in select function");
-            break; // ? WHAT ELSE SHOULD HAPPEN
-            // exit(EXIT_FAILURE);
-        }
-        if (ret == 0) { // Timeout
-            printf("Time frame of %d seconds has expired. No more connections accepted.\n", START_GAME_TIMEOUT);
-            sleep(2);
-            break;
-        }
-        if (FD_ISSET(server_fd, &tmp_fds)) {
-            client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen); // ! BLOCKING
-            if (client_socket < 0) {
-                perror("Error in accept function");
-                exit(EXIT_FAILURE);
-            }
-            printf("New request received, wait for authentication...\n");
-            FD_SET(client_socket, &read_fds); // Add the new client to the read set
-            max_fd = client_socket;
-            Client client_info;
-            client_info.socket = client_socket;
-            client_info.address = address; // This is the address of the WelcomeSocket
-            client_info.last_keep_alive_time = time(NULL);
-            client_info.score = 0;
-
-            // Create a new thread to handle the connection
-            pthread_t thread_id;
-            pthread_create(&thread_id, NULL, authenticate_client, (void*)&client_info);
-            pthread_detach(thread_id);
-            FD_CLR(server_fd, &read_fds);
-        }
-    }
-    return NULL;
-}
-
 
 
 
@@ -431,6 +370,68 @@ void* authenticate_client(void* arg) {
     pthread_detach(listen_for_messages_thread);
     return NULL;
 }
+
+// ? ********  CONNECITON PHASE ******** 
+// wait_for_connections: a thread that run before game phase, Waits for connections for START_GAME_TIMEOUT seconds, if connection received - authenticate the client, using a thread for each client, by autenticate_client function
+void* wait_for_connections(void* arg){
+    SocketInfo* info = (SocketInfo*)arg;
+    int server_fd = info->socket_fd; // Welcome Socket
+    struct sockaddr_in address = info->address;
+    int addrlen = sizeof(address);
+    fd_set read_fds;   // set of socket descriptors we want to read from
+    time_t start_time = time(NULL);
+    int client_socket;
+    int max_fd = server_fd;
+
+
+    while(1) {
+        fd_set tmp_fds = read_fds; // Create a copy of the read_fds
+        // Get the current time
+        time_t current_time = time(NULL);
+
+        // Calculate the elapsed time
+        int elapsed_time = (int)difftime(current_time, start_time);
+        struct timeval tv;
+        tv.tv_sec = START_GAME_TIMEOUT - elapsed_time;
+        tv.tv_usec = 0;
+        FD_ZERO(&tmp_fds);
+        FD_SET(server_fd, &tmp_fds);
+        int ret = select(max_fd + 1, &tmp_fds, NULL, NULL, &tv); // Blocking until a connection is received or timeout
+        if (ret < 0 && errno != EINTR) {
+            perror("Error in select function");
+            break; // ? WHAT ELSE SHOULD HAPPEN
+            // exit(EXIT_FAILURE);
+        }
+        if (ret == 0) { // Timeout
+            printf("Time frame of %d seconds has expired. No more connections accepted.\n", START_GAME_TIMEOUT);
+            sleep(2);
+            break;
+        }
+        if (FD_ISSET(server_fd, &tmp_fds)) {
+            client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen); // ! BLOCKING
+            if (client_socket < 0) {
+                perror("Error in accept function");
+                exit(EXIT_FAILURE);
+            }
+            printf("New request received, wait for authentication...\n");
+            FD_SET(client_socket, &read_fds); // Add the new client to the read set
+            max_fd = client_socket;
+            Client client_info;
+            client_info.socket = client_socket;
+            client_info.address = address; // This is the address of the WelcomeSocket
+            client_info.last_keep_alive_time = time(NULL);
+            client_info.score = 0;
+
+            // Create a new thread to handle the connection
+            pthread_t thread_id;
+            pthread_create(&thread_id, NULL, authenticate_client, (void*)&client_info);
+            pthread_detach(thread_id);
+            FD_CLR(server_fd, &read_fds);
+        }
+    }
+    return NULL;
+}
+
 
 
 void* distribute_multicast_address(void* arg){ // Using unicast messages
