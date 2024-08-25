@@ -165,6 +165,56 @@ void create_shuffled_questions(FILE* file){
     // }
 }
 
+// authenticate_client: a thread that runs for each client, Blocking on recv until the client sends the correct authentication code, anf for every case of an auth code, return to client the relevant message(AUTH_SUCCESS, AUTH_FAIL, MAX_TRIES)
+void* authenticate_client(void* arg) {
+    Client* client = (Client*)arg;
+    int socket = client->socket;
+    struct sockaddr_in address = client->address;
+    int wrong_auth_counter = 0;
+
+    char auth_buffer[1024];
+    while(1){
+        memset(auth_buffer, 0, sizeof(auth_buffer));
+        int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
+        if (ret == 0) { // Closed socket
+            return NULL;
+        }
+        else if (ret < 0) {
+            perror("Error receiving authentication code");
+            return NULL;
+        }
+
+        if (strcmp(auth_buffer, auth_code) != 0) {
+            send_message(socket, AUTH_FAIL, AUTH_FAIL_MSG);
+            wrong_auth_counter++;
+            if (wrong_auth_counter < 5) {
+                continue;
+            }
+            else {
+                send_message(socket, MAX_TRIES, MAX_TRIES_MSG);
+                printf("Maximum number of tries exceeded. Closing connection.\n");
+                // usleep(1000000); 
+                close(socket);
+                return NULL;
+            }
+        }
+        else {
+            send_message(socket, AUTH_SUCCESS, AUTH_SUCCESS_MSG);
+            pthread_mutex_lock(&client_mutex);
+            clients[client_count].socket = socket;
+            clients[client_count].address = address;
+            client_count++;
+            pthread_mutex_unlock(&client_mutex);
+            break;
+        }
+    }
+    printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+    pthread_t listen_for_messages_thread;
+    pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&socket);
+    pthread_detach(listen_for_messages_thread);
+    return NULL;
+}
+
 // ? ********  CONNECITON PHASE ******** 
 // wait_for_connections: a thread that run before game phase, Waits for connections for START_GAME_TIMEOUT seconds, if connection received - authenticate the client, using a thread for each client, by autenticate_client function
 void* wait_for_connections(void* arg){
@@ -226,55 +276,6 @@ void* wait_for_connections(void* arg){
     return NULL;
 }
 
-// authenticate_client: a thread that runs for each client, Blocking on recv until the client sends the correct authentication code, anf for every case of an auth code, return to client the relevant message(AUTH_SUCCESS, AUTH_FAIL, MAX_TRIES)
-void* authenticate_client(void* arg) {
-    Client* client = (Client*)arg;
-    int socket = client->socket;
-    struct sockaddr_in address = client->address;
-    int wrong_auth_counter = 0;
-
-    char auth_buffer[1024];
-    while(1){
-        memset(auth_buffer, 0, sizeof(auth_buffer));
-        int ret = recv(socket, auth_buffer, sizeof(auth_buffer), 0);
-        if (ret == 0) { // Closed socket
-            return NULL;
-        }
-        else if (ret < 0) {
-            perror("Error receiving authentication code");
-            return NULL;
-        }
-
-        if (strcmp(auth_buffer, auth_code) != 0) {
-            send_message(socket, AUTH_FAIL, AUTH_FAIL_MSG);
-            wrong_auth_counter++;
-            if (wrong_auth_counter < 5) {
-                continue;
-            }
-            else {
-                send_message(socket, MAX_TRIES, MAX_TRIES_MSG);
-                printf("Maximum number of tries exceeded. Closing connection.\n");
-                // usleep(1000000); 
-                close(socket);
-                return NULL;
-            }
-        }
-        else {
-            send_message(socket, AUTH_SUCCESS, AUTH_SUCCESS_MSG);
-            pthread_mutex_lock(&client_mutex);
-            clients[client_count].socket = socket;
-            clients[client_count].address = address;
-            client_count++;
-            pthread_mutex_unlock(&client_mutex);
-            break;
-        }
-    }
-    printf("New connection accepted: %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-    pthread_t listen_for_messages_thread;
-    pthread_create(&listen_for_messages_thread, NULL, listen_for_messages, (void*)&socket);
-    pthread_detach(listen_for_messages_thread);
-    return NULL;
-}
 
 // send_message: Sends a message to a specific client
 void send_message(int sock, int msg_type, const char *msg_data) {
