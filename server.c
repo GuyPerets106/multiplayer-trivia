@@ -95,13 +95,29 @@ time_t curr_question_start_time;
 int game_over_flag = 0;
 char auth_code[7];
 
-void print_participants() {
-    printf("Participants:\n");
-    for (int i = 0; i < client_count; i++) {
-        printf("%s:%d - %s\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port), clients[i].name);
+// generate_random_code: Generates a 6 characters code (a-z/A-Z/0-9)
+void generate_random_code() { 
+    srand(time(NULL));
+    for (int i = 0; i < 6; i++)
+    {
+        int type = rand() % 3;
+        switch (type)
+        {
+        case 0:
+            auth_code[i] = 'a' + rand() % 26;
+            break;
+        case 1:
+            auth_code[i] = 'A' + rand() % 26;
+            break;
+        case 2:
+            auth_code[i] = '0' + rand() % 10;
+            break;
+        }
     }
+    auth_code[6] = '\0';
 }
 
+// create_shuffled_questions: Reads questions from a file and shuffles them, returns a shuffled array of questions of type QA //! i think i can make the function better, more robust
 void create_shuffled_questions(FILE* file){
     // Read 5 lines (question) and 1 line (answer) from FILENAME
     for (int i = 0; i < NUM_OF_QUESTIONS; i++){
@@ -149,6 +165,7 @@ void create_shuffled_questions(FILE* file){
     // }
 }
 
+// send_message: Sends a message to a specific client
 void send_message(int sock, int msg_type, const char *msg_data) {
     Message msg;
     msg.type = msg_type;
@@ -159,6 +176,19 @@ void send_message(int sock, int msg_type, const char *msg_data) {
     send(sock, &msg, sizeof(msg), 0);
 }
 
+
+
+
+
+
+
+void print_participants() {
+    printf("Participants:\n");
+    for (int i = 0; i < client_count; i++) {
+        printf("%s:%d - %s\n", inet_ntoa(clients[i].address.sin_addr), ntohs(clients[i].address.sin_port), clients[i].name);
+    }
+}
+
 void send_multicast_message(int sock, struct sockaddr_in addr, int msg_type, const char *msg_data) {
     Message msg;
     msg.type = msg_type;
@@ -167,27 +197,6 @@ void send_multicast_message(int sock, struct sockaddr_in addr, int msg_type, con
 
     // Send the message
     sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&addr, sizeof(addr));
-}
-
-void generate_random_code() { // Generates a 6 characters code (a-z/A-Z/0-9)
-    srand(time(NULL));
-    for (int i = 0; i < 6; i++)
-    {
-        int type = rand() % 3;
-        switch (type)
-        {
-        case 0:
-            auth_code[i] = 'a' + rand() % 26;
-            break;
-        case 1:
-            auth_code[i] = 'A' + rand() % 26;
-            break;
-        case 2:
-            auth_code[i] = '0' + rand() % 10;
-            break;
-        }
-    }
-    auth_code[6] = '\0';
 }
 
 void handle_keep_alive(int client_sock) {
@@ -312,6 +321,7 @@ void* listen_for_messages(void* args){
 }
 
 
+// authenticate_client: a thread that runs for each client, Blocking on recv until the client sends the correct authentication code, anf for every case of an auth code, return to client the relevant message(AUTH_SUCCESS, AUTH_FAIL, MAX_TRIES)
 void* authenticate_client(void* arg) {
     Client* client = (Client*)arg;
     int socket = client->socket;
@@ -361,16 +371,8 @@ void* authenticate_client(void* arg) {
     return NULL;
 }
 
-void* distribute_multicast_address(void* arg){ // Using unicast messages
-    for (int i = 0; i < client_count; i++) {
-        char multicast_address[1024];
-        sprintf(multicast_address, "%s:%d", MULTICAST_IP, MULTICAST_PORT); // Creating the multicast address
-        send_message(clients[i].socket, GAME_STARTING, multicast_address);
-    }
-    sleep(1);
-    return NULL;
-}
-
+// ? ********  CONNECITON PHASE ******** 
+// wait_for_connections: a thread that run before game phase, Waits for connections for START_GAME_TIMEOUT seconds, if connection received - authenticate the client, using a thread for each client, by autenticate_client function
 void* wait_for_connections(void* arg){
     SocketInfo* info = (SocketInfo*)arg;
     int server_fd = info->socket_fd; // Welcome Socket
@@ -430,6 +432,18 @@ void* wait_for_connections(void* arg){
     return NULL;
 }
 
+
+
+void* distribute_multicast_address(void* arg){ // Using unicast messages
+    for (int i = 0; i < client_count; i++) {
+        char multicast_address[1024];
+        sprintf(multicast_address, "%s:%d", MULTICAST_IP, MULTICAST_PORT); // Creating the multicast address
+        send_message(clients[i].socket, GAME_STARTING, multicast_address);
+    }
+    sleep(1);
+    return NULL;
+}
+
 void* deny_new_connections(void* arg) {
     SocketInfo* info = (SocketInfo*)arg;
     int server_fd = info->socket_fd; // Welcome Socket
@@ -446,7 +460,6 @@ void* deny_new_connections(void* arg) {
         close(client_socket);
     }
 }
-
 
 void send_scoreboard(int multicast_sock, struct sockaddr_in multicast_addr) {
     char scoreboard[1024];
@@ -504,7 +517,7 @@ void handle_client_answer(int client_sock, char* client_answer) {
                         send_message(client_sock, ANSWER, "Time is up");
                         break;
                     }
-                    int curr_score = floor(30 / elapsed_time * 100 + elapsed_time);
+                    int curr_score = (30 / elapsed_time * 100 + elapsed_time);
                     printf("%s got %d points\n", clients[i].name, curr_score);
                     clients[i].score += curr_score;
                 }
@@ -531,6 +544,7 @@ void* monitor_clients(void* args){
     return NULL;
 }
 
+//! need to add functions and shorten the main function
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;

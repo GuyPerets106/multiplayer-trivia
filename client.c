@@ -72,53 +72,7 @@ pthread_mutex_t lock_question = PTHREAD_MUTEX_INITIALIZER;
 pthread_t curr_question_thread;
 char curr_answer[1024];
 
-void send_message(int sock, int msg_type, const char *msg_data) {
-    pthread_mutex_lock(&lock_answer);
-    Message msg;
-    memset(msg.data, 0, sizeof(msg.data));
-    msg.type = msg_type;
-    strncpy(msg.data, msg_data, strlen(msg_data));
-    msg.data[strlen(msg_data)] = '\0';  // Ensure null-termination
-
-    // Send the message
-    // printf("Sending message %d: %s\n", msg.type, msg.data);
-    send(sock, &msg, sizeof(msg), 0);
-    pthread_mutex_unlock(&lock_answer);
-}
-
-void send_authentication_code(int sock){
-    char auth_buffer[1024];
-    memset(auth_buffer, 0, sizeof(auth_buffer));
-    printf("Enter the authentication code: ");
-    scanf("%s", auth_buffer);
-    send(sock, auth_buffer, strlen(auth_buffer), 0);
-}
-
-void answer_question() {
-    printf("Enter your answer:\n");
-    pthread_mutex_lock(&lock_answer);
-    // Use select on stdin
-    fd_set readfds;
-    struct timeval tv;
-    tv.tv_sec = QUESTION_TIMEOUT;
-    tv.tv_usec = 0;
-    FD_ZERO(&readfds);
-    FD_SET(fileno(stdin), &readfds);
-    int ret = select(1, &readfds, NULL, NULL, &tv);
-    if(ret == -1){
-        perror("select");
-        exit(1);
-    }
-    else if(FD_ISSET(fileno(stdin), &readfds)){
-        scanf("%s", curr_answer);
-    }
-    else{
-        printf("Question Timeout Reached...\n");
-        fflush(stdin);
-    }
-    pthread_mutex_unlock(&lock_answer);
-}
-
+// establish_connection() function: Open Socket, ask client for IP and Port, then connect to the server, return the socket
 int establish_connection(){
     // printf("GOT HERE\n");
     int sock = 0;
@@ -167,81 +121,31 @@ int establish_connection(){
     return -1;
 }
 
-
-void* handle_unicast(void* args){ // Handles first connections with the server and authentication
-    int bytes_receive_unicast;
-    Message msg_unicast;
-    int sock = *(int*)args;
-    while(1){ // Unicast
-        memset(msg_unicast.data, 0, sizeof(msg_unicast.data));
-        bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
-        if (bytes_receive_unicast > 0) {
-            pthread_t handle_unicast_msg;
-            MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
-            thread_args->socket = sock;
-            thread_args->msg = msg_unicast;
-            // printf("Message received: %s\n", msg_unicast.data);
-            pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
-            pthread_detach(handle_unicast_msg);
-            continue; // ! REMOVE ALL CONTINUES WHEN MULTICAST IS IMPLEMENTED
-        }
-        else if (bytes_receive_unicast == 0) { // Socket closed
-            printf("Server disconnected\n");
-            sock = establish_connection();
-            send_authentication_code(sock);
-            continue;
-        }
-        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-            // No message received, do something else
-            continue;
-        }
-        else {
-            perror("Error in recv function");
-            printf("Message received: %s\n", msg_unicast.data);
-            break;
-        }
-    }
-    return NULL;
+// send_authentication_code() function: Ask the client for the authentication code(Blocking!), then send it to the server using the socket
+void send_authentication_code(int sock){
+    char auth_buffer[1024];
+    memset(auth_buffer, 0, sizeof(auth_buffer));
+    printf("Enter the authentication code: ");
+    scanf("%s", auth_buffer);
+    send(sock, auth_buffer, strlen(auth_buffer), 0);
 }
 
-void* handle_multicast(void* args){
-    int bytes_receive_multicast;
-    Message msg_multicast;
-    MulticastThreadArgs* thread_args = (MulticastThreadArgs*)args;
-    int multicast_sock = thread_args->multicast_socket;
-    int unicast_sock = thread_args->unicast_socket;
-    struct sockaddr* addr = thread_args->addr;
-    socklen_t addrlen = sizeof(*addr);
-    while(game_started){
-        memset(msg_multicast.data, 0, sizeof(msg_multicast.data));
-        bytes_receive_multicast = recvfrom(multicast_sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
-        if (bytes_receive_multicast > 0) {
-            pthread_t handle_multicast_msg;
-            MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
-            thread_args->socket = unicast_sock;
-            thread_args->msg = msg_multicast;
-            pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)thread_args);
-            pthread_detach(handle_multicast_msg);
-            continue;
-        }
-        else if (bytes_receive_multicast == 0) { // Socket closed
-            printf("Multicast socket closed\n");
-            break;
-        }
-        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-            // No message received, do something else
-            continue;
-        }
-        else {
-            perror("Error in recv function");
-            printf("Message received: %s\n", msg_multicast.data);
-            break;
-        }
-    }
-    free(thread_args);
-    return NULL;
+// send_message() function: send a message to the server using the socket
+void send_message(int sock, int msg_type, const char *msg_data) {
+    pthread_mutex_lock(&lock_answer);
+    Message msg;
+    memset(msg.data, 0, sizeof(msg.data));
+    msg.type = msg_type;
+    strncpy(msg.data, msg_data, strlen(msg_data));
+    msg.data[strlen(msg_data)] = '\0';  // Ensure null-termination
+
+    // Send the message
+    // printf("Sending message %d: %s\n", msg.type, msg.data);
+    send(sock, &msg, sizeof(msg), 0);
+    pthread_mutex_unlock(&lock_answer);
 }
 
+// open_multicast_socket() function: open a multicast socket, bind it to the multicast address, and open a new thread to handle the multicast messages, handle_multicast()
 void open_multicast_socket(int unicast_sock, char* msg){
     MulticastAddress multicast_address;
     char splitter[] = ":";
@@ -292,6 +196,44 @@ void open_multicast_socket(int unicast_sock, char* msg){
     pthread_detach(handle_multicast_thread);
 }
 
+
+// answer_question() function: ask the client for the answer(Blocking), then store it in curr_answer(public variable)
+void answer_question() {
+    printf("Enter your answer:\n");
+    pthread_mutex_lock(&lock_answer);
+    // Use select on stdin
+    fd_set readfds;
+    struct timeval tv;
+    tv.tv_sec = QUESTION_TIMEOUT;
+    tv.tv_usec = 0;
+    FD_ZERO(&readfds);
+    FD_SET(fileno(stdin), &readfds);
+    int ret = select(1, &readfds, NULL, NULL, &tv);
+    if(ret == -1){
+        perror("select");
+        exit(1);
+    }
+    else if(FD_ISSET(fileno(stdin), &readfds)){
+        scanf("%s", curr_answer);
+    }
+    else{
+        printf("Question Timeout Reached...\n");
+        fflush(stdin);
+    }
+    pthread_mutex_unlock(&lock_answer);
+}
+
+// handle_message() types:
+// #1 AUTH_FAIL: Print the message and ask for the authentication code again(by calling send_authentication_code())
+// #2 AUTH_SUCCESS: Print the message and ask for the game name, then sends name to server using send_message // ! game name can be function(DO)
+// #3 MAX_TRIES: close the socket, establish a new connection(by establish_connection), and send the authentication code(by send_authentication_code)
+// #4 GAME_STARTED: if the game has already started, close the socket, try to establish connection with different IP and Port, and send the authentication code
+// #5 GAME_STARTING: if client got the GAME_STARTING message, open a multicast socket(by calling open_multicast_socket())
+// #6 KEEP_ALIVE: send a KEEP_ALIVE message to the server, using send_message()
+// #7 QUESTION: print the question, and ask for the answer(by calling answer_question()), then send the answer to the server by send_message()
+// #8 ANSWER: // ! Look at the function(what the hell is this?)
+// #9 SCOREBOARD: print the scoreboard that got from server as msg.data
+// #10 GAME_OVER: print "Game Over", close the socket, establish a new connection, and send the authentication code
 void* handle_message(void* args) {
     signal(SIGUSR1, handle_signal);
     MessageThreadArgs* thread_args = (MessageThreadArgs*)args;
@@ -399,6 +341,84 @@ void* handle_message(void* args) {
     free(thread_args);
     return NULL;
 }
+
+// handle_unicast() function: always running, on recv(), if the server sends a message, create a new thread to handle the message
+void* handle_unicast(void* args){ // Handles first connections with the server and authentication
+    int bytes_receive_unicast;
+    Message msg_unicast;
+    int sock = *(int*)args;
+    while(1){ // Unicast
+        memset(msg_unicast.data, 0, sizeof(msg_unicast.data));
+        bytes_receive_unicast = recv(sock, &msg_unicast, sizeof(msg_unicast), 0); // ! BLOCKING
+        if (bytes_receive_unicast > 0) {
+            pthread_t handle_unicast_msg;
+            MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
+            thread_args->socket = sock;
+            thread_args->msg = msg_unicast;
+            // printf("Message received: %s\n", msg_unicast.data);
+            pthread_create(&handle_unicast_msg, NULL, handle_message, (void*)thread_args);
+            pthread_detach(handle_unicast_msg);
+            continue; // ! REMOVE ALL CONTINUES WHEN MULTICAST IS IMPLEMENTED
+        }
+        else if (bytes_receive_unicast == 0) { // Socket closed
+            printf("Server disconnected\n");
+            sock = establish_connection();
+            send_authentication_code(sock);
+            continue;
+        }
+        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            // No message received, do something else
+            continue;
+        }
+        else {
+            perror("Error in recv function");
+            printf("Message received: %s\n", msg_unicast.data);
+            break;
+        }
+    }
+    return NULL;
+}
+
+
+// handle_multicast() function: always running, on recv(), if the server sends a message, create a new thread to handle the message, handle_message()
+void* handle_multicast(void* args){
+    int bytes_receive_multicast;
+    Message msg_multicast;
+    MulticastThreadArgs* thread_args = (MulticastThreadArgs*)args;
+    int multicast_sock = thread_args->multicast_socket;
+    int unicast_sock = thread_args->unicast_socket;
+    struct sockaddr* addr = thread_args->addr;
+    socklen_t addrlen = sizeof(*addr);
+    while(game_started){
+        memset(msg_multicast.data, 0, sizeof(msg_multicast.data));
+        bytes_receive_multicast = recvfrom(multicast_sock, &msg_multicast, sizeof(msg_multicast), 0, addr, &addrlen); // ! BLOCKING
+        if (bytes_receive_multicast > 0) {
+            pthread_t handle_multicast_msg;
+            MessageThreadArgs* thread_args = malloc(sizeof(MessageThreadArgs));
+            thread_args->socket = unicast_sock;
+            thread_args->msg = msg_multicast;
+            pthread_create(&handle_multicast_msg, NULL, handle_message, (void*)thread_args);
+            pthread_detach(handle_multicast_msg);
+            continue;
+        }
+        else if (bytes_receive_multicast == 0) { // Socket closed
+            printf("Multicast socket closed\n");
+            break;
+        }
+        else if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            // No message received, do something else
+            continue;
+        }
+        else {
+            perror("Error in recv function");
+            printf("Message received: %s\n", msg_multicast.data);
+            break;
+        }
+    }
+    free(thread_args);
+    return NULL;
+}
+
 
 int main() {
     int sock;
